@@ -1,7 +1,7 @@
 from unittest import TestCase
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-from GO_preprocessing import create_dag, copy_dag, filter_go_by_namespace, layers_with_duplicates, layer_overlap, \
+from go_preprocessing import create_dag, copy_dag, filter_go_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leafs, plot_depth_distribution
 from ProxyTerm import ProxyTerm
 

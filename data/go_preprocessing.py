@@ -1,18 +1,6 @@
-import numpy as np
 from goatools.obo_parser import *
-import json
 import time
-import DAGGenerator
-import matplotlib.pyplot as plt
-
-
-def store_dag(dag, output_file):
-    with open(output_file, "w") as location:
-        json.dump(dag, location)
-
-
-def load_dag(file):
-    return json.load(file)
+from dag_analysis import *
 
 
 def create_dag(file):
@@ -62,73 +50,6 @@ def filter_go_by_namespace(go, namespace):
     return filtered_go
 
 
-def all_leafs(go: dict[str, GOTerm]):
-    """Returns all terms with 0 children."""
-    leafs = set()
-    for term in go:
-        if len(go[term].get_all_children()) == 0:
-            leafs.add(term)
-    return leafs
-
-
-def direct_parents(go: dict[str, GOTerm], term_ids):
-    """Returns a set of all the immediate parents from the IDs in the input set."""
-    parent_set = set()
-    for term_id in term_ids:
-        term = go[term_id]
-        parents = set([parent.item_id for parent in term.parents])
-        parent_set = parent_set.union(parents)
-    return parent_set
-
-
-def layers_with_duplicates(go: dict[str, GOTerm], only_id=False):
-    """Returns a list of sets containing leafs and consecutive immediate parents.
-    Terms can appear multiple times in different layers. Argument determines whether
-    layers consist of objects (GOTerm) or IDs (String)."""
-    layers = []
-    leafs = all_leafs(go)
-
-    if only_id:
-        layers.append(leafs)
-    else:
-        layers.append({go[term_id] for term_id in leafs})
-
-    parents = direct_parents(go, leafs)
-    while len(parents) > 0:
-        if only_id:
-            layers.append(parents)
-        else:
-            layers.append({go[term_id] for term_id in parents})
-        parents = direct_parents(go, parents)
-    return layers
-
-
-def number_of_children(go: dict[str, GOTerm], term_ids):
-    """Returns a dictionary where the terms in the input set
-    are sorted by total number of children (recursively)."""
-    terms_by_number_of_children = {}
-    for term_id in term_ids:
-        children = go[term_id].get_all_children()
-        if len(children) in terms_by_number_of_children:
-            terms_by_number_of_children[len(children)] = terms_by_number_of_children[len(children)].union([go[term_id]])
-        else:
-            terms_by_number_of_children[len(children)] = {go[term_id]}
-    return terms_by_number_of_children
-
-
-def layer_overlap(layers):
-    """Returns a dict containing the intersection of each possible pair of layers"""
-    overlap = {}
-    k = 0
-    for k in range(len(layers) - 1):
-        for i in range(k + 1, len(layers)):
-            if i == k:
-                pass
-            else:
-                overlap[(k, i)] = layers[k].intersection(layers[i])
-    return overlap
-
-
 # 28-11-2024
 # NOTE: Merging overlap between layers is unproductive, since this removes high-order terms
 #       that occur often, but at different depths. Merging should be more vertical than on
@@ -150,11 +71,6 @@ def merge_overlap(go: dict[str, GOTerm], layer1: int, layer2: int):
         for parent in parents:
             parent.children.remove(term)
             parent.children = parent.children.union(children)
-
-
-def is_alternative_id(go: dict[str, GOTerm], term_id):
-    """Returns True if the given ID is a pseudonym of a GO term object"""
-    return term_id != go[term_id].item_id
 
 
 def prune_skip_connections(go: dict[str, GOTerm]):
@@ -219,19 +135,6 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
 
     print(f"Total amount of merge events: {merge_events}")
     return merge_events
-
-
-def plot_depth_distribution(go: dict[str, GOTerm], term_ids, alpha=0.5, bins=np.arange(18) - 0.5,
-                            title="Distribution of GO-term depths"):
-    depths = []
-    for term_id in term_ids:
-        depths.append(go[term_id].depth)
-
-    plt.xlabel("GO-DAG depth")
-    plt.ylabel("Number of GO-terms")
-    plt.xticks(np.arange(stop=18, step=2))
-    plt.title(title)
-    plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
 
 
 if __name__ == "__main__":
