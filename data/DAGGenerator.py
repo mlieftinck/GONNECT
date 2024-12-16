@@ -27,6 +27,7 @@ class DAGGenerator:
         c.parents = {a, b}
         d.parents = {b}
         a.depth, b.depth, c.depth, d.depth = 0, 1, 2, 2
+        a.level, b.level, c.level, d.level = 0, 1, 1, 2
 
         return dag
 
@@ -50,5 +51,6 @@ class DAGGenerator:
         b.children = {c}
         c.parents = {a, b}
         a.depth, b.depth, c.depth = 0, 1, 2
+        a.level, b.level, c.level = 0, 1, 1
 
         return dag

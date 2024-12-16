@@ -1,9 +1,9 @@
 from unittest import TestCase
-import DAGGenerator
+from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
 from GO_preprocessing import create_dag, copy_dag, filter_go_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leafs, plot_depth_distribution
-import copy
+from ProxyTerm import ProxyTerm
 
 go_bp = filter_go_by_namespace(create_dag("go-basic.obo"), "biological_process")
 
@@ -11,7 +11,7 @@ go_bp = filter_go_by_namespace(create_dag("go-basic.obo"), "biological_process")
 class Test(TestCase):
 
     def test_copy_dag_small(self):
-        dag = DAGGenerator.DAGGenerator.dag_update_rule1()
+        dag = DAGGenerator.dag_update_rule1()
         dag_copy = copy_dag(dag)
         dag.pop("D")
         dag["B"].children.add(dag["A"])
@@ -35,7 +35,7 @@ class Test(TestCase):
     #  | /    \
     #  C       D
     def test_prune_skip_connections_small(self):
-        dag = DAGGenerator.DAGGenerator.dag_update_rule1()
+        dag = DAGGenerator.dag_update_rule1()
         greedy_layers = layers_with_duplicates(dag)
         overlap = layer_overlap(greedy_layers)
         overlapping_terms = sum([len(overlap[pair]) for pair in overlap])
@@ -62,7 +62,7 @@ class Test(TestCase):
     # | /
     # C
     def test_merge_chains_small(self):
-        dag = DAGGenerator.DAGGenerator.dag_update_rule2()
+        dag = DAGGenerator.dag_update_rule2()
         term_before_merge = len(dag.keys())
         merge_events = merge_chains(dag)
         terms_after_merge = len(dag.keys())
@@ -108,4 +108,16 @@ class Test(TestCase):
         plt.title(f"Distribution of leaf depth after merge-pruning \n"
                   f"(#parents = {parent_threshold}, #children = {children_threshold})")
         plt.show()
+
+    #       A
+    #     / |
+    #   /   B
+    #  | /    \
+    #  C       D
+    def test_set_level_and_depth_small(self):
+        dag = DAGGenerator.dag_update_rule1()
+        dag["E"] = ProxyTerm("E", {dag["B"]}, {dag["D"]})
+        self.assertEqual(dag["E"].depth, dag["C"].depth)
+        self.assertEqual(dag["E"].level, dag["C"].level + 1)
+
 

@@ -229,14 +229,9 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, alpha=0.5, bins=np.
 
     plt.xlabel("GO-DAG depth")
     plt.ylabel("Number of GO-terms")
-    plt.xticks(np.arange(18, step=2))
+    plt.xticks(np.arange(stop=18, step=2))
     plt.title(title)
     plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
-
-
-def set_level_and_depth(term: GOTerm):
-    parents = term.parents
-    children = term.children
 
 
 if __name__ == "__main__":
