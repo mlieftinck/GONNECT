@@ -8,6 +8,11 @@ def is_alternative_id(go: dict[str, GOTerm], term_id):
     return term_id != go[term_id].item_id
 
 
+def is_imbalanced(term: GOTerm) -> bool:
+    """Returns True if the given GO term is imbalanced"""
+    return term.level != term.depth
+
+
 def all_leafs(go: dict[str, GOTerm]):
     """Returns all terms with 0 children."""
     leafs = set()
@@ -78,9 +83,17 @@ def layer_overlap(layers):
 def plot_depth_distribution(go: dict[str, GOTerm], term_ids, alpha=0.5, bins=np.arange(18) - 0.5,
                             title="Distribution of GO-term depths"):
     depths = []
+    max_depth_term_id = "GO:0000001"
+    min_depth_term_id = "GO:0000001"
     for term_id in term_ids:
         depths.append(go[term_id].depth)
+        if go[term_id].depth > go[max_depth_term_id].depth:
+            max_depth_term_id = term_id
+        if go[term_id].depth < go[min_depth_term_id].depth:
+            min_depth_term_id = term_id
 
+    print(f"max leaf depth: {max(depths)} ({max_depth_term_id})")
+    print(f"min leaf depth: {min(depths)} ({min_depth_term_id})")
     plt.xlabel("GO-DAG depth")
     plt.ylabel("Number of GO-terms")
     plt.xticks(np.arange(stop=18, step=2))

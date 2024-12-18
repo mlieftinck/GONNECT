@@ -1,6 +1,7 @@
 from goatools.obo_parser import *
 import time
 from dag_analysis import *
+from data.ProxyTerm import ProxyTerm
 
 
 def create_dag(file):
@@ -118,11 +119,8 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
                     child.parents.remove(term)
                     child.parents.update(parents)
 
-                    # Update depths
-                    child.depth -= 1
-                    childs_children = child.get_all_children()
-                    for childs_child_id in childs_children:
-                        go[childs_child_id].depth -= 1
+                    # Update level and depth recursively for all descendants
+                    update_level_and_depth(go, child)
 
                 # Keep track of removed terms and their pseudonyms
                 merged_term_ids.append(term_id)
@@ -135,6 +133,43 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
 
     print(f"Total amount of merge events: {merge_events}")
     return merge_events
+
+
+def update_level_and_depth(go: dict[str, GOTerm], term: GOTerm):
+    """Set level and depth of argument and update all descendants."""
+    term.level = min(parent.level for parent in term.parents) + 1
+    term.depth = max(parent.depth for parent in term.parents) + 1
+    for child in term.children:
+        update_level_and_depth(go, child)
+
+
+def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
+    """From the given root, recursively traverse the graph until an imbalance in found. If the current root
+    is on the shorter branch of the imbalance, insert a ProxyTerm to increase the branch length. Depending
+    on the complexity of the graph, multiple passes might be needed to remove all imbalances."""
+
+    if len(root.children) == 0:
+        return
+
+    imbalanced_children = set()
+    for child in root.children:
+        if is_imbalanced(child):
+            # Check if this is the shorter branch of the imbalance
+            if child.level == root.level + 1:
+                imbalanced_children.add(child)
+
+    if len(imbalanced_children) > 0:
+        if isinstance(root, ProxyTerm):
+            proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id[-10:]
+        else:
+            proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id
+        go[proxy_item_id] = ProxyTerm(proxy_item_id, {root}, imbalanced_children)
+        update_level_and_depth(go, go[proxy_item_id])
+        # print(f"{proxy_item_id} inserted below {root.item_id}")
+
+    for child in root.children:
+        if not is_imbalanced(child):
+            insert_proxy_terms(go, child, original_dag_size)
 
 
 if __name__ == "__main__":

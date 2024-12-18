@@ -1,6 +1,9 @@
 from unittest import TestCase
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
+
+from data.dag_analysis import is_imbalanced
+from data.go_preprocessing import insert_proxy_terms, update_level_and_depth
 from go_preprocessing import create_dag, copy_dag, filter_go_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leafs, plot_depth_distribution
 from ProxyTerm import ProxyTerm
@@ -78,7 +81,6 @@ class Test(TestCase):
         self.assertLess(terms_after_merge, terms_before_merge)
 
     def test_single_merge_effect_on_overlap(self):
-        # dag = filter_go_by_namespace(create_dag("go-basic.obo"), "biological_process")
         dag = copy_dag(go_bp)
         layers = layers_with_duplicates(dag)
         overlap = layer_overlap(layers)
@@ -114,10 +116,31 @@ class Test(TestCase):
     #   /   B
     #  | /    \
     #  C       D
-    def test_set_level_and_depth_small(self):
+    def test_insert_proxy_terms_small(self):
         dag = DAGGenerator.dag_update_rule1()
-        dag["E"] = ProxyTerm("E", {dag["B"]}, {dag["D"]})
-        self.assertEqual(dag["E"].depth, dag["C"].depth)
+        self.assertNotEqual(dag["C"].level, dag["C"].depth)
+        insert_proxy_terms(dag, dag["A"], len(dag))
+        self.assertEqual(dag["C"].level, dag["C"].depth)
+
+    def test_update_level_and_depth_small(self):
+        dag = DAGGenerator.dag_update_rule1()
+        dag["E"] = ProxyTerm("E", {dag["C"]}, set())
+        update_level_and_depth(dag, dag["C"])
         self.assertEqual(dag["E"].level, dag["C"].level + 1)
+        self.assertEqual(dag["E"].depth, dag["C"].depth + 1)
 
+    def test_insert_proxy_terms_go(self):
+        dag = copy_dag(go_bp)
+        original_size = len(dag)
+        go_root = "GO:0008150"
+        imbalanced = sum(is_imbalanced(term) for term in dag.values())
+        dag_size = original_size
+        print(f"Imbalanced terms: {imbalanced}")
+        while imbalanced > 0:
+            insert_proxy_terms(dag, dag[go_root], original_size)
+            imbalanced = sum(is_imbalanced(term) for term in dag.values())
+            print(f"Proxy terms added: {len(dag) - dag_size}")
+            print(f"Imbalanced terms left: {imbalanced}")
+            dag_size = len(dag)
 
+        print(f"Total amount of added proxies: {len(dag) - original_size}")
