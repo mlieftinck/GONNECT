@@ -137,6 +137,13 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
 
 def update_level_and_depth(go: dict[str, GOTerm], term: GOTerm):
     """Set level and depth of argument and update all descendants."""
+    if len(term.parents) == 0:
+        if term.item_id == "GO:0008150":
+            print("Trying to access root nodes parents.")
+        else:
+            print("Current term has no parents, but is not original root.")
+        return
+
     term.level = min(parent.level for parent in term.parents) + 1
     term.depth = max(parent.depth for parent in term.parents) + 1
     for child in term.children:
@@ -160,7 +167,8 @@ def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
 
     if len(imbalanced_children) > 0:
         if isinstance(root, ProxyTerm):
-            proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id[-10:]
+            proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id[7 + len(
+                str(len(go) - original_dag_size)):]
         else:
             proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id
         go[proxy_item_id] = ProxyTerm(proxy_item_id, {root}, imbalanced_children)
@@ -170,6 +178,19 @@ def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
     for child in root.children:
         if not is_imbalanced(child):
             insert_proxy_terms(go, child, original_dag_size)
+
+
+def pull_leafs_down(go: dict[str, GOTerm], original_dag_size):
+    pre_proxy_size = len(go)
+    leaf_ids = all_leaf_ids(go)
+    max_depth = max(go[leaf_id].depth for leaf_id in leaf_ids)
+    for leaf_id in leaf_ids:
+        while go[leaf_id].depth < max_depth:
+            proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + leaf_id
+            go[proxy_item_id] = ProxyTerm(proxy_item_id, {p for p in go[leaf_id].parents}, {go[leaf_id]})
+            update_level_and_depth(go, go[proxy_item_id])
+
+    print(f"Number of inserted proxy leafs: {len(go) - pre_proxy_size}")
 
 
 if __name__ == "__main__":

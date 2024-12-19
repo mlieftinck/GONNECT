@@ -2,6 +2,8 @@ from goatools.obo_parser import GOTerm
 import matplotlib.pyplot as plt
 import numpy as np
 
+from data.ProxyTerm import ProxyTerm
+
 
 def is_alternative_id(go: dict[str, GOTerm], term_id):
     """Returns True if the given ID is a pseudonym of a GO term object"""
@@ -13,11 +15,11 @@ def is_imbalanced(term: GOTerm) -> bool:
     return term.level != term.depth
 
 
-def all_leafs(go: dict[str, GOTerm]):
-    """Returns all terms with 0 children."""
+def all_leaf_ids(go: dict[str, GOTerm]):
+    """Returns all term IDs with 0 children."""
     leafs = set()
     for term in go:
-        if len(go[term].get_all_children()) == 0:
+        if len(go[term].children) == 0:
             leafs.add(term)
     return leafs
 
@@ -37,7 +39,7 @@ def layers_with_duplicates(go: dict[str, GOTerm], only_id=False):
     Terms can appear multiple times in different layers. Argument determines whether
     layers consist of objects (GOTerm) or IDs (String)."""
     layers = []
-    leafs = all_leafs(go)
+    leafs = all_leaf_ids(go)
 
     if only_id:
         layers.append(leafs)
@@ -92,10 +94,19 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, alpha=0.5, bins=np.
         if go[term_id].depth < go[min_depth_term_id].depth:
             min_depth_term_id = term_id
 
-    print(f"max leaf depth: {max(depths)} ({max_depth_term_id})")
-    print(f"min leaf depth: {min(depths)} ({min_depth_term_id})")
-    plt.xlabel("GO-DAG depth")
-    plt.ylabel("Number of GO-terms")
+    # print(f"max leaf depth: {max(depths)} ({max_depth_term_id})")
+    # print(f"min leaf depth: {min(depths)} ({min_depth_term_id})")
+    plt.xlabel("Leaf depth")
+    plt.ylabel("Number of terms")
     plt.xticks(np.arange(stop=18, step=2))
     plt.title(title)
     plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
+
+
+def print_dag_info(dag: dict[str, GOTerm]):
+    proxies = len([term for term in dag.values() if isinstance(term, ProxyTerm)])
+    terms = len(dag.values())
+    print(f"Number of nodes: {terms}")
+    print(f"Number of leafs: {len(all_leaf_ids(dag))}")
+    print(f"Proxy terms: {proxies}/{terms} = {proxies / terms * 100:.1f}%")
+    print(f"Max depth: {max(term.depth for term in dag.values())}")
