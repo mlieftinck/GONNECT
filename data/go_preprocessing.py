@@ -4,12 +4,14 @@ from dag_analysis import *
 from data.ProxyTerm import ProxyTerm
 
 
-def create_dag(file):
+def create_dag(file, rel=False):
     """Returns a DAG from an .obo file."""
+    if rel:
+        return GODag(file, optional_attrs={"relationship"})
     return GODag(file)
 
 
-def copy_dag(dag):
+def copy_dag(dag, rel=False):
     """Copy the GO DAG to prevent rebuilding from scratch (saving time)"""
     new_dag = {}
     # Create object per term
@@ -23,6 +25,10 @@ def copy_dag(dag):
         new_term.depth = term.depth
         new_term.is_obsolete = term.is_obsolete
         new_term.alt_ids = term.alt_ids
+        if rel:
+            test = term.relationship
+            new_term.relationship = term.relationship
+            new_term.relationship_rev = term.relationship_rev
         new_dag[term_id] = new_term
 
     # Link alternative IDs to single object
@@ -75,7 +81,7 @@ def merge_overlap(go: dict[str, GOTerm], layer1: int, layer2: int):
 
 
 def prune_skip_connections(go: dict[str, GOTerm]):
-    """If a node A has parents B and C, and B is also a parent of C, remove edge AB."""
+    """If a node A has parents B and C, and B is also an (indirect) parent of C, remove edge AB."""
     pruning_events = 0
     for term_id in go:
         direct_parent_ids = {parent.item_id for parent in go[term_id].parents}
@@ -93,7 +99,7 @@ def prune_skip_connections(go: dict[str, GOTerm]):
 
 
 def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=1):
-    """If a node A has #children <= n and #parents <= m, remove node A.
+    """If a non-leaf node A has #children <= n and #parents <= m, remove node A.
     Parent(s) of A become(s) the new parent(s) of A's children."""
     merge_events = 0
     merged_term_ids = []
@@ -105,7 +111,7 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         if is_alternative_id(go, term_id):
             continue
 
-        # Check merge conditions
+        # Check merge conditions (leafs are never merged)
         parents = term.parents
         children = term.children
         if len(children) > 0:
@@ -190,7 +196,16 @@ def pull_leafs_down(go: dict[str, GOTerm], original_dag_size):
             go[proxy_item_id] = ProxyTerm(proxy_item_id, {p for p in go[leaf_id].parents}, {go[leaf_id]})
             update_level_and_depth(go, go[proxy_item_id])
 
-    print(f"Number of inserted proxy leafs: {len(go) - pre_proxy_size}")
+    print("COMPLETED: Pull leafs to maximum depth")
+    print(f"Number of inserted leaf proxies: {len(go) - pre_proxy_size}")
+
+def relationships_to_parents(go_rel: dict[str, GOTerm]):
+    for term_id in go_rel.keys():
+        term = go_rel[term_id]
+        for relationship_type, relationships in term.relationship.items():
+            term.parents.update(relationships)
+        for relationship_type, relationships in term.relationship_rev.items():
+            term.children.update(relationships)
 
 
 if __name__ == "__main__":

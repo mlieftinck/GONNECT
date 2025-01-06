@@ -1,20 +1,25 @@
 from unittest import TestCase
+
+from goatools.obo_parser import GODag
+from pygments.lexers import go
+
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
 
-from data.dag_analysis import is_imbalanced
-from data.go_preprocessing import insert_proxy_terms, update_level_and_depth
+from data.dag_analysis import is_imbalanced, print_dag_info
+from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leafs_down, relationships_to_parents
 from go_preprocessing import create_dag, copy_dag, filter_go_by_namespace, layers_with_duplicates, layer_overlap, \
-    prune_skip_connections, merge_chains, all_leafs, plot_depth_distribution
+    prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
 
 go_bp = filter_go_by_namespace(create_dag("go-basic.obo"), "biological_process")
+go_bp_rel = filter_go_by_namespace(create_dag("go-basic.obo", rel=True), "biological_process")
 
 
 class Test(TestCase):
 
     def test_copy_dag_small(self):
-        dag = DAGGenerator.dag_update_rule1()
+        dag = DAGGenerator.dag1()
         dag_copy = copy_dag(dag)
         dag.pop("D")
         dag["B"].children.add(dag["A"])
@@ -38,7 +43,7 @@ class Test(TestCase):
     #  | /    \
     #  C       D
     def test_prune_skip_connections_small(self):
-        dag = DAGGenerator.dag_update_rule1()
+        dag = DAGGenerator.dag1()
         greedy_layers = layers_with_duplicates(dag)
         overlap = layer_overlap(greedy_layers)
         overlapping_terms = sum([len(overlap[pair]) for pair in overlap])
@@ -65,7 +70,7 @@ class Test(TestCase):
     # | /
     # C
     def test_merge_chains_small(self):
-        dag = DAGGenerator.dag_update_rule2()
+        dag = DAGGenerator.dag2()
         term_before_merge = len(dag.keys())
         merge_events = merge_chains(dag)
         terms_after_merge = len(dag.keys())
@@ -95,7 +100,7 @@ class Test(TestCase):
     def test_merge_chains_until_convergence(self):
         dag = copy_dag(go_bp)
         # Plot leaf depth distribution before and after merge-prune convergence
-        leaf_ids = all_leafs(dag)
+        leaf_ids = all_leaf_ids(dag)
         plot_depth_distribution(dag, leaf_ids)
         # First merge, then prune:
         pruning_events = 1
@@ -105,7 +110,7 @@ class Test(TestCase):
         while pruning_events + merge_events > 0:
             merge_events = merge_chains(dag, parent_threshold, children_threshold)
             pruning_events = prune_skip_connections(dag)
-        leaf_ids_post = all_leafs(dag)
+        leaf_ids_post = all_leaf_ids(dag)
         plot_depth_distribution(dag, leaf_ids_post)
         plt.title(f"Distribution of leaf depth after merge-pruning \n"
                   f"(#parents = {parent_threshold}, #children = {children_threshold})")
@@ -117,13 +122,13 @@ class Test(TestCase):
     #  | /    \
     #  C       D
     def test_insert_proxy_terms_small(self):
-        dag = DAGGenerator.dag_update_rule1()
+        dag = DAGGenerator.dag1()
         self.assertNotEqual(dag["C"].level, dag["C"].depth)
         insert_proxy_terms(dag, dag["A"], len(dag))
         self.assertEqual(dag["C"].level, dag["C"].depth)
 
     def test_update_level_and_depth_small(self):
-        dag = DAGGenerator.dag_update_rule1()
+        dag = DAGGenerator.dag1()
         dag["E"] = ProxyTerm("E", {dag["C"]}, set())
         update_level_and_depth(dag, dag["C"])
         self.assertEqual(dag["E"].level, dag["C"].level + 1)
@@ -133,9 +138,14 @@ class Test(TestCase):
         dag = copy_dag(go_bp)
         original_size = len(dag)
         go_root = "GO:0008150"
+        # Find all imbalanced terms
         imbalanced = sum(is_imbalanced(term) for term in dag.values())
         dag_size = original_size
         print(f"Imbalanced terms: {imbalanced}")
+        # Plot baseline
+        leaf_ids = all_leaf_ids(dag)
+        plot_depth_distribution(dag, leaf_ids)
+        # Multiple passes through the graph to account for shifts in balanced branches
         while imbalanced > 0:
             insert_proxy_terms(dag, dag[go_root], original_size)
             imbalanced = sum(is_imbalanced(term) for term in dag.values())
@@ -143,4 +153,147 @@ class Test(TestCase):
             print(f"Imbalanced terms left: {imbalanced}")
             dag_size = len(dag)
 
-        print(f"Total amount of added proxies: {len(dag) - original_size}")
+        print(f"Total amount of inserted balancing proxies: {len(dag) - original_size}")
+
+    def test_plot_merge_results(self):
+        go_ref = copy_dag(go_bp)
+        leaf_ids = all_leaf_ids(go_ref)
+
+        # Depth distribution for different merge conditions
+        plot_depth_distribution(go_ref, leaf_ids, title="Distribution of GO-leaf depths\nfor varying merge conditions")
+        plt.legend(["Original"], title="(#parents, #children)")
+        plt.show()
+
+        merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
+        for merge_condition in merge_conditions:
+            go = copy_dag(go_bp)
+            pruning_events, merge_events = 1, 1
+            while pruning_events + merge_events > 0:
+                merge_events = merge_chains(go, merge_condition[0], merge_condition[1])
+                pruning_events = prune_skip_connections(go)
+            plot_depth_distribution(go_ref, leaf_ids)
+            plot_depth_distribution(go, leaf_ids, title="Distribution of GO-leaf depths\nfor varying merge conditions")
+            plt.legend(["Original", merge_condition], title="(#parents, #children)")
+            plt.show()
+
+    def test_plot_merge_proxy_results(self):
+        # TODOO: Still broken...
+        go_ref = copy_dag(go_bp)
+        leaf_ids = all_leaf_ids(go_ref)
+        test = go_bp["GO:1900886"]
+        # # Depth distribution for different merge conditions, with balancing
+        # plot_depth_distribution(go_ref, leaf_ids,
+        #                         title="Distribution of GO-leaf depths\nfor varying merge conditions (balanced)")
+        # plt.legend(["Original"], title="(#parents, #children)")
+        # plt.show()
+
+        # merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
+        merge_conditions = [(1, 1)]
+        for merge_condition in merge_conditions:
+            go = copy_dag(go_bp)
+            pruning_events, merge_events = 1, 1
+            while pruning_events + merge_events > 0:
+                merge_events = merge_chains(go, merge_condition[0], merge_condition[1])
+                pruning_events = prune_skip_connections(go)
+
+            original_size = len(go)
+            go_root = "GO:0008150"
+            imbalanced = sum(is_imbalanced(term) for term in go.values())
+            dag_size = original_size
+            while imbalanced > 0:
+                # TODOO: Find out why there are no more proxies added once the imbalance reached 499 (merge condition (1, 1))
+                insert_proxy_terms(go, go[go_root], original_size)
+                imbalanced = sum(is_imbalanced(term) for term in go.values())
+                imbalanced_debug = {term for term in go.values() if is_imbalanced(term)}
+
+                # when imbalanced, yet no more proxies are added, stop (to stop infinite loop)
+                if len(go) - dag_size == 0:
+                    break
+
+                print(f"Proxy terms added: {len(go) - dag_size}")
+                print(f"Imbalanced terms left: {imbalanced}")
+                dag_size = len(go)
+
+            plot_depth_distribution(go_ref, leaf_ids)
+            plot_depth_distribution(go, leaf_ids,
+                                    title="Distribution of GO-leaf depths\nfor varying merge conditions (balanced)")
+            plt.legend(["Original", merge_condition], title="(#parents, #children)")
+            # plt.show()
+
+    def test_pull_leafs_down_small(self):
+        dag = DAGGenerator.dag3()
+        pull_leafs_down(dag, len(dag))
+        self.assertEqual(dag["C"].depth, dag["E"].depth)
+
+    def test_pull_leafs_down_go(self):
+        go = copy_dag(go_bp)
+        pull_leafs_down(go, len(go))
+        print_dag_info(go)
+        max_depth = max(go[leaf_id].depth for leaf_id in all_leaf_ids(go))
+        depth_sum = sum(go[leaf_id].depth for leaf_id in all_leaf_ids(go))
+        self.assertEqual(depth_sum, max_depth * len(all_leaf_ids(go)))
+
+    def test_insert_proxy_pull_leafs(self):
+        dag = copy_dag(go_bp)
+        original_size = len(dag)
+        go_root = "GO:0008150"
+        imbalanced = sum(is_imbalanced(term) for term in dag.values())
+        dag_size = original_size
+        leaf_ids = all_leaf_ids(dag)
+        plot_depth_distribution(dag, leaf_ids)
+        # Balancing iterations
+        while imbalanced > 0:
+            insert_proxy_terms(dag, dag[go_root], original_size)
+            imbalanced = sum(is_imbalanced(term) for term in dag.values())
+            print(f"Proxy terms added: {len(dag) - dag_size}")
+            print(f"Imbalanced terms left: {imbalanced}")
+            dag_size = len(dag)
+        print("COMPLETED: Balancing DAG with proxies")
+
+        print(f"\nNumber of original non-leaf terms: {original_size - len(leaf_ids)}")
+        print(f"Number of leafs: {len(all_leaf_ids(dag))}")
+        print(f"Number of inserted balancing proxies: {len(dag) - original_size}")
+        average_leaf_depth = sum(dag[leaf_id].depth for leaf_id in all_leaf_ids(dag)) / len(all_leaf_ids(dag))
+        print(f"Average leaf depth: {average_leaf_depth:.1f}\n")
+
+        pull_leafs_down(dag, original_size)
+
+    def test_merge_prune_pull_leafs(self):
+        go = copy_dag(go_bp)
+        # Plot leaf depth distribution before and after merge-prune convergence
+        leaf_ids = all_leaf_ids(go)
+        plot_depth_distribution(go, leaf_ids)
+        # First merge, then prune:
+        pruning_events = 1
+        merge_events = 1
+        parent_threshold = 1
+        children_threshold = 1
+        while pruning_events + merge_events > 0:
+            merge_events = merge_chains(go, parent_threshold, children_threshold)
+            pruning_events = prune_skip_connections(go)
+        print("COMPLETED: Merge-prune until convergence")
+        pull_leafs_down(go, len(go))
+
+    def test_load_relationships(self):
+        go = copy_dag(go_bp)
+        go_rel_full = GODag("go-basic.obo", optional_attrs={"relationship"})
+        go_rel = filter_go_by_namespace(go_rel_full, "biological_process")
+        del go_rel_full
+        test = go_rel["GO:0002893"]
+        pass
+
+    def test_leaf_relationships(self):
+        go = copy_dag(go_bp)
+        go_rel_full = GODag("go-basic.obo", optional_attrs={"relationship"})
+        go_rel = filter_go_by_namespace(go_rel_full, "biological_process")
+        del go_rel_full
+        leaf_ids = all_leaf_ids(go)
+        leaf_ids_with_rel = [leaf_id for leaf_id in leaf_ids if len(go_rel[leaf_id].relationship_rev) > 0]
+        print(f"{len(leaf_ids_with_rel)}/{len(leaf_ids)} leafs have children through relationships.")
+
+    def test_relationships_to_parents(self):
+        go_rel = copy_dag(go_bp_rel, 1)
+        relationships_to_parents(go_rel)
+        self.assertEqual(len(go_rel["GO:0000027"].children), 3)
+        self.assertEqual(len(go_rel["GO:0000027"].parents), 3)
+
