@@ -11,9 +11,11 @@ def create_dag(file, rel=False):
     return GODag(file)
 
 
-def copy_dag(dag, rel=False):
-    """Copy the GO DAG to prevent rebuilding from scratch (saving time)"""
+def copy_dag(dag):
+    """Copy the GO DAG to prevent rebuilding from scratch (to save time)."""
     new_dag = {}
+    rel_check = True
+    rel = False
     # Create object per term
     for term_id in dag:
         term = dag[term_id]
@@ -25,11 +27,13 @@ def copy_dag(dag, rel=False):
         new_term.depth = term.depth
         new_term.is_obsolete = term.is_obsolete
         new_term.alt_ids = term.alt_ids
-        if rel:
-            test = term.relationship
-            new_term.relationship = term.relationship
-            new_term.relationship_rev = term.relationship_rev
         new_dag[term_id] = new_term
+
+        # Check if relationships are enabled
+        if rel_check:
+            if hasattr(dag[term_id], "relationship"):
+                rel = True
+            rel_check = False
 
     # Link alternative IDs to single object
     for term_id in dag:
@@ -44,6 +48,18 @@ def copy_dag(dag, rel=False):
             new_dag[term_id].children.add(new_dag[child.item_id])
         for parent in parents:
             new_dag[term_id].parents.add(new_dag[parent.item_id])
+
+    # Set additional relationships
+    if rel:
+        for term_id in dag:
+            rel = dag[term_id].relationship
+            rel_rev = dag[term_id].relationship_rev
+            new_dag[term_id].relationship = {}
+            new_dag[term_id].relationship_rev = {}
+            for rel_type, partners in rel.items():
+                new_dag[term_id].relationship[rel_type] = {new_dag[partner.item_id] for partner in partners}
+            for rel_type, partners in rel_rev.items():
+                new_dag[term_id].relationship_rev[rel_type] = {new_dag[partner.item_id] for partner in partners}
 
     return new_dag
 
@@ -83,18 +99,24 @@ def merge_overlap(go: dict[str, GOTerm], layer1: int, layer2: int):
 def prune_skip_connections(go: dict[str, GOTerm]):
     """If a node A has parents B and C, and B is also an (indirect) parent of C, remove edge AB."""
     pruning_events = 0
+    # Define direct and indirect parent sets
     for term_id in go:
         direct_parent_ids = {parent.item_id for parent in go[term_id].parents}
         indirect_parent_ids = set()
         for parent_id in direct_parent_ids:
             indirect_parent_ids.update(go[parent_id].get_all_parents())
 
+        # Check for skip condition
         for parent_id in direct_parent_ids:
             if parent_id in indirect_parent_ids:
                 go[term_id].parents.remove(go[parent_id])
                 go[parent_id].children.remove(go[term_id])
                 pruning_events += 1
-    print(f"Total amount of pruning events: {pruning_events}")
+
+                # Update level and depth after skip removal
+                update_level_and_depth(go[term_id])
+
+    # print(f"Pruning events: {pruning_events}")
     return pruning_events
 
 
@@ -111,9 +133,9 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         if is_alternative_id(go, term_id):
             continue
 
-        # Check merge conditions (leafs are never merged)
         parents = term.parents
         children = term.children
+        # Check merge conditions (leaves are never merged)
         if len(children) > 0:
             if (len(parents) <= threshold_parents) & (len(children) <= threshold_children):
 
@@ -126,7 +148,7 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
                     child.parents.update(parents)
 
                     # Update level and depth recursively for all descendants
-                    update_level_and_depth(go, child)
+                    update_level_and_depth(child)
 
                 # Keep track of removed terms and their pseudonyms
                 merged_term_ids.append(term_id)
@@ -137,56 +159,99 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
     for merged_id in merged_term_ids:
         go.pop(merged_id)
 
-    print(f"Total amount of merge events: {merge_events}")
+    # print(f"Merge events: {merge_events}")
     return merge_events
 
 
-def update_level_and_depth(go: dict[str, GOTerm], term: GOTerm):
-    """Set level and depth of argument and update all descendants."""
+def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, threshold_children=1):
+    """Iteratively apply merging and pruning for the given merge conditions, until the DAG converges."""
+    pruning_events, merge_events = 1, 1
+    original_go_size = len(go)
+    while pruning_events + merge_events > 0:
+        merge_events = merge_chains(go, threshold_parents, threshold_children)
+        pruning_events = prune_skip_connections(go)
+    print("\n----- COMPLETED: Merge-Prune until convergence -----\n")
+    print(f"Remaining nodes: {len(go)}/{original_go_size}")
+
+
+def update_level_and_depth(term: GOTerm):
+    """Set level and depth of the given node and update all its descendants."""
     if len(term.parents) == 0:
         if term.item_id == "GO:0008150":
             print("Trying to access root nodes parents.")
         else:
-            print("Current term has no parents, but is not original root.")
+            print("WARNING: Current term has no parents, but is not original root.")
         return
 
     term.level = min(parent.level for parent in term.parents) + 1
     term.depth = max(parent.depth for parent in term.parents) + 1
     for child in term.children:
-        update_level_and_depth(go, child)
+        update_level_and_depth(child)
 
 
 def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
-    """From the given root, recursively traverse the graph until an imbalance in found. If the current root
-    is on the shorter branch of the imbalance, insert a ProxyTerm to increase the branch length. Depending
-    on the complexity of the graph, multiple passes might be needed to remove all imbalances."""
-
+    """From the given root, recursively traverse the graph until an imbalanced child in found. If the current node
+    is on the shorter branch above the child, insert a ProxyTerm between parent and child to increase the branch length.
+    Depending on the complexity of the graph, multiple passes might be needed to remove all imbalances."""
     if len(root.children) == 0:
         return
 
+    # Check for imbalanced children
     imbalanced_children = set()
     for child in root.children:
         if is_imbalanced(child):
-            # Check if this is the shorter branch of the imbalance
+            # Check if parent is on the shorter branch of the imbalance
             if child.level == root.level + 1:
                 imbalanced_children.add(child)
 
     if len(imbalanced_children) > 0:
+        # If-statement used for correctly naming the new balancing proxy term
         if isinstance(root, ProxyTerm):
             proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id[7 + len(
                 str(len(go) - original_dag_size)):]
         else:
             proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + root.item_id
-        go[proxy_item_id] = ProxyTerm(proxy_item_id, {root}, imbalanced_children)
-        update_level_and_depth(go, go[proxy_item_id])
-        # print(f"{proxy_item_id} inserted below {root.item_id}")
 
+        # Place proxy between root and all properly imbalanced children
+        go[proxy_item_id] = ProxyTerm(proxy_item_id, {root}, imbalanced_children)
+        update_level_and_depth(go[proxy_item_id])
+
+    # Once balanced, move down to the children of the children, until leaf layer
     for child in root.children:
         if not is_imbalanced(child):
             insert_proxy_terms(go, child, original_dag_size)
 
 
-def pull_leafs_down(go: dict[str, GOTerm], original_dag_size):
+def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0008150"):
+    """Iteratively apply balancing to the given DAG, until all nodes are balanced."""
+    original_size = len(go)
+    imbalanced = sum(is_imbalanced(term) for term in go.values())
+    dag_size = original_size
+    stall = False
+    stall_counter = 5
+    while imbalanced > 0:
+        insert_proxy_terms(go, go[root_id], original_size)
+        imbalanced = sum(is_imbalanced(term) for term in go.values())
+
+        # if not stall:
+        #     print(f"Proxy terms added: {len(go) - dag_size}")
+        #     print(f"Imbalanced terms left: {imbalanced}")
+
+        # Check if the loop stalls, and terminate if needed
+        if (len(go) - dag_size == 0) and (imbalanced > 0):
+            if stall_counter == 0:
+                break
+
+            print(f"WARNING: Imbalance can not be resolved.\nLoop will be terminated in {stall_counter}...")
+            stall = True
+            stall_counter -= 1
+        dag_size = len(go)
+    print("\n----- COMPLETED: Balancing DAG with proxies -----\n")
+    print(f"Number of inserted balancing proxies: {len(go) - original_size}")
+
+
+def pull_leaves_down(go: dict[str, GOTerm], original_dag_size):
+    """Add proxies above leaves until all leaves have equal depth."""
     pre_proxy_size = len(go)
     leaf_ids = all_leaf_ids(go)
     max_depth = max(go[leaf_id].depth for leaf_id in leaf_ids)
@@ -194,18 +259,20 @@ def pull_leafs_down(go: dict[str, GOTerm], original_dag_size):
         while go[leaf_id].depth < max_depth:
             proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + leaf_id
             go[proxy_item_id] = ProxyTerm(proxy_item_id, {p for p in go[leaf_id].parents}, {go[leaf_id]})
-            update_level_and_depth(go, go[proxy_item_id])
+            update_level_and_depth(go[proxy_item_id])
 
-    print("COMPLETED: Pull leafs to maximum depth")
+    print("\n----- COMPLETED: Pull leaves to maximum depth -----\n")
     print(f"Number of inserted leaf proxies: {len(go) - pre_proxy_size}")
 
+
 def relationships_to_parents(go_rel: dict[str, GOTerm]):
+    """Update parent-child relationships to include all possible relationships."""
     for term_id in go_rel.keys():
         term = go_rel[term_id]
-        for relationship_type, relationships in term.relationship.items():
-            term.parents.update(relationships)
-        for relationship_type, relationships in term.relationship_rev.items():
-            term.children.update(relationships)
+        for relationship_type, members in term.relationship.items():
+            term.parents.update(members)
+            for member in members:
+                member.children.add(term)
 
 
 if __name__ == "__main__":

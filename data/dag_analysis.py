@@ -17,11 +17,11 @@ def is_imbalanced(term: GOTerm) -> bool:
 
 def all_leaf_ids(go: dict[str, GOTerm]):
     """Returns all term IDs with 0 children."""
-    leafs = set()
+    leaves = set()
     for term in go:
         if len(go[term].children) == 0:
-            leafs.add(term)
-    return leafs
+            leaves.add(term)
+    return leaves
 
 
 def direct_parents(go: dict[str, GOTerm], term_ids):
@@ -35,18 +35,18 @@ def direct_parents(go: dict[str, GOTerm], term_ids):
 
 
 def layers_with_duplicates(go: dict[str, GOTerm], only_id=False):
-    """Returns a list of sets containing leafs and consecutive immediate parents.
+    """Returns a list of sets containing leaves and consecutive immediate parents.
     Terms can appear multiple times in different layers. Argument determines whether
     layers consist of objects (GOTerm) or IDs (String)."""
     layers = []
-    leafs = all_leaf_ids(go)
+    leaves = all_leaf_ids(go)
 
     if only_id:
-        layers.append(leafs)
+        layers.append(leaves)
     else:
-        layers.append({go[term_id] for term_id in leafs})
+        layers.append({go[term_id] for term_id in leaves})
 
-    parents = direct_parents(go, leafs)
+    parents = direct_parents(go, leaves)
     while len(parents) > 0:
         if only_id:
             layers.append(parents)
@@ -82,7 +82,7 @@ def layer_overlap(layers):
     return overlap
 
 
-def plot_depth_distribution(go: dict[str, GOTerm], term_ids, alpha=0.5, bins=np.arange(18) - 0.5,
+def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha=0.5, bins=np.arange(18) - 0.5,
                             title="Distribution of GO-term depths"):
     depths = []
     max_depth_term_id = "GO:0000001"
@@ -96,11 +96,18 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, alpha=0.5, bins=np.
 
     # print(f"max leaf depth: {max(depths)} ({max_depth_term_id})")
     # print(f"min leaf depth: {min(depths)} ({min_depth_term_id})")
-    plt.xlabel("Leaf depth")
-    plt.ylabel("Number of terms")
-    plt.xticks(np.arange(stop=18, step=2))
-    plt.title(title)
-    plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
+    if sub_fig:
+        sub_fig.set_xlabel("Depth")
+        sub_fig.set_ylabel("Number of terms")
+        sub_fig.set_xticks(np.arange(stop=18, step=2))
+        sub_fig.set_title(title)
+        sub_fig.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
+    else:
+        plt.xlabel("Depth")
+        plt.ylabel("Number of terms")
+        plt.xticks(np.arange(stop=18, step=2))
+        plt.title(title)
+        plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
 
 
 def print_dag_info(dag: dict[str, GOTerm]):
