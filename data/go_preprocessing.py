@@ -5,15 +5,34 @@ from data.ProxyTerm import ProxyTerm
 
 
 def create_dag(file, rel=False):
-    """Returns a DAG from an .obo file."""
+    """Returns a DAG from an .obo file, with additional root of all namespaces."""
     if rel:
-        return GODag(file, optional_attrs={"relationship"})
-    return GODag(file)
+        go_dag = GODag(file, optional_attrs={"relationship"})
+    else:
+        go_dag = GODag(file)
+
+    # Add a root above the three namespace roots, for easy DAG traversal
+    namespace_roots = ("GO:0008150", "GO:0003674", "GO:0005575")
+    super_root = GOTerm()
+    super_root.item_id = "GO:0000000"
+    super_root.name = "GO root"
+    super_root.namespace = ""
+    super_root.level = -1
+    super_root.depth = -1
+    super_root.children = {go_dag[namespace_root] for namespace_root in namespace_roots}
+    for namespace_root in namespace_roots:
+        go_dag[namespace_root].parents.add(super_root)
+    if rel:
+        super_root.relationship = dict()
+        super_root.relationship_rev = dict()
+
+    go_dag["GO:0000000"] = super_root
+    return go_dag
 
 
 def copy_dag(dag):
     """Copy the GO DAG to prevent rebuilding from scratch (to save time)."""
-    new_dag = {}
+    new_dag = dict()
     rel_check = True
     rel = False
     # Create object per term
@@ -64,12 +83,30 @@ def copy_dag(dag):
     return new_dag
 
 
-def filter_go_by_namespace(go, namespace):
-    """Returns a DAG with only terms from the given namespace."""
-    filtered_go = {}
-    for term_id in go:
-        if go[term_id].namespace == namespace:
-            filtered_go[term_id] = go[term_id]
+def filter_by_namespace(go, namespaces):
+    """Returns a DAG with only terms from the given namespace(s). (Always includes namespace root.)"""
+    filtered_go = copy_dag(go)
+    for term_id in go.keys():
+        if not (go[term_id].namespace in namespaces):
+            # Keep namespace root but remove unwanted child namespaces
+            if go[term_id].namespace == "":
+                filtered_go[term_id].children = {child for child in go[term_id].children if
+                                                 child.namespace in namespaces}
+            # Remove unwanted terms and their references
+            else:
+                term_to_delete = filtered_go.pop(term_id)
+                for child in term_to_delete.children:
+                    child.parents.discard(term_to_delete)
+                for parent in term_to_delete.parents:
+                    parent.children.discard(term_to_delete)
+                # If present, remove relationship references as well
+                if hasattr(term_to_delete, "relationship"):
+                    for rel_type, partners in term_to_delete.relationship.items():
+                        for partner in partners:
+                            partner.relationship_rev[rel_type].discard(term_to_delete)
+                    for rel_type, partners in term_to_delete.relationship_rev.items():
+                        for partner in partners:
+                            partner.relationship[rel_type].discard(term_to_delete)
     return filtered_go
 
 
@@ -100,7 +137,7 @@ def prune_skip_connections(go: dict[str, GOTerm]):
     """If a node A has parents B and C, and B is also an (indirect) parent of C, remove edge AB."""
     pruning_events = 0
     # Define direct and indirect parent sets
-    for term_id in go:
+    for term_id in go.keys():
         direct_parent_ids = {parent.item_id for parent in go[term_id].parents}
         indirect_parent_ids = set()
         for parent_id in direct_parent_ids:
@@ -135,8 +172,8 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
 
         parents = term.parents
         children = term.children
-        # Check merge conditions (leaves are never merged)
-        if len(children) > 0:
+        # Check merge conditions (root and leaves are never merged)
+        if (len(children) > 0) and (len(parents) > 0):
             if (len(parents) <= threshold_parents) & (len(children) <= threshold_children):
 
                 # Update parent-child relations
@@ -177,14 +214,12 @@ def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, th
 def update_level_and_depth(term: GOTerm):
     """Set level and depth of the given node and update all its descendants."""
     if len(term.parents) == 0:
-        if term.item_id == "GO:0008150":
-            print("Trying to access root nodes parents.")
-        else:
+        if term.item_id != "GO:0000000":
             print("WARNING: Current term has no parents, but is not original root.")
-        return
 
-    term.level = min(parent.level for parent in term.parents) + 1
-    term.depth = max(parent.depth for parent in term.parents) + 1
+    else:
+        term.level = min(parent.level for parent in term.parents) + 1
+        term.depth = max(parent.depth for parent in term.parents) + 1
     for child in term.children:
         update_level_and_depth(child)
 
@@ -222,7 +257,7 @@ def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
             insert_proxy_terms(go, child, original_dag_size)
 
 
-def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0008150"):
+def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0000000"):
     """Iteratively apply balancing to the given DAG, until all nodes are balanced."""
     original_size = len(go)
     imbalanced = sum(is_imbalanced(term) for term in go.values())
@@ -233,9 +268,10 @@ def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0008150"):
         insert_proxy_terms(go, go[root_id], original_size)
         imbalanced = sum(is_imbalanced(term) for term in go.values())
 
-        # if not stall:
-        #     print(f"Proxy terms added: {len(go) - dag_size}")
-        #     print(f"Imbalanced terms left: {imbalanced}")
+        if not stall:
+            # print(f"Proxy terms added: {len(go) - dag_size}")
+            # print(f"Imbalanced terms left: {imbalanced}")
+            pass
 
         # Check if the loop stalls, and terminate if needed
         if (len(go) - dag_size == 0) and (imbalanced > 0):
@@ -273,6 +309,7 @@ def relationships_to_parents(go_rel: dict[str, GOTerm]):
             term.parents.update(members)
             for member in members:
                 member.children.add(term)
+    update_level_and_depth(go_rel["GO:0000000"])
 
 
 if __name__ == "__main__":
@@ -283,7 +320,7 @@ if __name__ == "__main__":
         # Original GO DAG metrics for comparison
         t_ref_start = time.time()
         go_complete_ref = create_dag(obo_file)  # 44017 terms
-        go_bp_ref = filter_go_by_namespace(go_complete_ref, "biological_process")  # 28539 terms
+        go_bp_ref = filter_by_namespace(go_complete_ref, "biological_process")  # 28539 terms
         dag_layers_ref = layers_with_duplicates(go_bp_ref)
         overlap_ref = layer_overlap(dag_layers_ref)
         t_ref_end = time.time()
@@ -292,7 +329,7 @@ if __name__ == "__main__":
 
     # Full-scale GO DAG, GO-BP, greedy layerization and layer overlap
     go_complete = create_dag(obo_file)
-    go_bp = filter_go_by_namespace(go_complete, "biological_process")
+    go_bp = filter_by_namespace(go_complete, "biological_process")
     dag_layers = layers_with_duplicates(go_bp)
     overlap = layer_overlap(dag_layers)
 

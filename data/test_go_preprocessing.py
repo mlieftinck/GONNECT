@@ -6,13 +6,15 @@ from data.dag_analysis import is_imbalanced, print_dag_info
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
     merge_prune_until_convergence, balance_until_convergence
-from go_preprocessing import create_dag, copy_dag, filter_go_by_namespace, layers_with_duplicates, layer_overlap, \
+from go_preprocessing import create_dag, copy_dag, filter_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
 
 go_main = create_dag("go-basic.obo")
-go_bp_main = filter_go_by_namespace(go_main, "biological_process")
+go_bp_main = filter_by_namespace(go_main, {"biological_process"})
 go_rel_main = create_dag("go-basic.obo", rel=True)
+relationships_to_parents(go_rel_main)
+plot = False
 
 
 class Test(TestCase):
@@ -100,7 +102,8 @@ class Test(TestCase):
         dag = copy_dag(go_bp_main)
         # Plot leaf depth distribution before and after merge-prune convergence
         leaf_ids = all_leaf_ids(dag)
-        plot_depth_distribution(dag, leaf_ids)
+        if plot:
+            plot_depth_distribution(dag, leaf_ids)
         # First merge, then prune:
         pruning_events = 1
         merge_events = 1
@@ -110,10 +113,11 @@ class Test(TestCase):
             merge_events = merge_chains(dag, parent_threshold, children_threshold)
             pruning_events = prune_skip_connections(dag)
         leaf_ids_post = all_leaf_ids(dag)
-        plot_depth_distribution(dag, leaf_ids_post)
-        plt.title(f"Distribution of leaf depth after merge-pruning \n"
-                  f"(#parents = {parent_threshold}, #children = {children_threshold})")
-        plt.show()
+        if plot:
+            plot_depth_distribution(dag, leaf_ids_post)
+            plt.title(f"Distribution of leaf depth after merge-pruning \n"
+                      f"(#parents = {parent_threshold}, #children = {children_threshold})")
+            plt.show()
 
     #       A
     #     / |
@@ -136,14 +140,15 @@ class Test(TestCase):
     def test_insert_proxy_terms_go(self):
         dag = copy_dag(go_bp_main)
         original_size = len(dag)
-        go_root = "GO:0008150"
+        go_root = "GO:0000000"
         # Find all imbalanced terms
         imbalanced = sum(is_imbalanced(term) for term in dag.values())
         dag_size = original_size
         print(f"Imbalanced terms: {imbalanced}")
         # Plot baseline
         leaf_ids = all_leaf_ids(dag)
-        plot_depth_distribution(dag, leaf_ids)
+        if plot:
+            plot_depth_distribution(dag, leaf_ids)
         # Multiple passes through the graph to account for shifts in balanced branches
         while imbalanced > 0:
             insert_proxy_terms(dag, dag[go_root], original_size)
@@ -159,9 +164,11 @@ class Test(TestCase):
         leaf_ids = all_leaf_ids(go_ref)
 
         # Depth distribution for different merge conditions
-        plot_depth_distribution(go_ref, leaf_ids, title="Distribution of GO-leaf depths\nfor varying merge conditions")
-        plt.legend(["Original"], title="(#parents, #children)")
-        plt.show()
+        if plot:
+            plot_depth_distribution(go_ref, leaf_ids,
+                                    title="Distribution of GO-leaf depths\nfor varying merge conditions")
+            plt.legend(["Original"], title="(#parents, #children)")
+            plt.show()
 
         merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
         for merge_condition in merge_conditions:
@@ -170,19 +177,22 @@ class Test(TestCase):
             while pruning_events + merge_events > 0:
                 merge_events = merge_chains(go, merge_condition[0], merge_condition[1])
                 pruning_events = prune_skip_connections(go)
-            plot_depth_distribution(go_ref, leaf_ids)
-            plot_depth_distribution(go, leaf_ids, title="Distribution of GO-leaf depths\nfor varying merge conditions")
-            plt.legend(["Original", merge_condition], title="(#parents, #children)")
-            plt.show()
+            if plot:
+                plot_depth_distribution(go_ref, leaf_ids)
+                plot_depth_distribution(go, leaf_ids,
+                                        title="Distribution of GO-leaf depths\nfor varying merge conditions")
+                plt.legend(["Original", merge_condition], title="(#parents, #children)")
+                plt.show()
 
     def test_plot_merge_proxy_results(self):
         go_ref = copy_dag(go_bp_main)
         leaf_ids = all_leaf_ids(go_ref)
         # Depth distribution for different merge conditions, with balancing
-        plot_depth_distribution(go_ref, leaf_ids,
-                                title="Distribution of GO-leaf depths\nfor varying merge conditions (balanced)")
-        plt.legend(["Original"], title="(#parents, #children)")
-        plt.show()
+        if plot:
+            plot_depth_distribution(go_ref, leaf_ids,
+                                    title="Distribution of GO-leaf depths\nfor varying merge conditions (balanced)")
+            plt.legend(["Original"], title="(#parents, #children)")
+            plt.show()
 
         merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
         for merge_condition in merge_conditions:
@@ -193,7 +203,7 @@ class Test(TestCase):
                 pruning_events = prune_skip_connections(go)
 
             original_size = len(go)
-            go_root = "GO:0008150"
+            go_root = "GO:0000000"
             imbalanced = sum(is_imbalanced(term) for term in go.values())
             dag_size = original_size
             while imbalanced > 0:
@@ -209,11 +219,12 @@ class Test(TestCase):
                 print(f"Imbalanced terms left: {imbalanced}")
                 dag_size = len(go)
 
-            plot_depth_distribution(go_ref, leaf_ids)
-            plot_depth_distribution(go, leaf_ids,
-                                    title="Distribution of GO-leaf depths\nfor varying merge conditions (balanced)")
-            plt.legend(["Original", merge_condition], title="(#parents, #children)")
-            plt.show()
+            if plot:
+                plot_depth_distribution(go_ref, leaf_ids)
+                plot_depth_distribution(go, leaf_ids,
+                                        title="Distribution of GO-leaf depths\nfor varying merge conditions (balanced)")
+                plt.legend(["Original", merge_condition], title="(#parents, #children)")
+                plt.show()
 
     def test_pull_leaves_down_small(self):
         dag = DAGGenerator.dag3()
@@ -231,11 +242,12 @@ class Test(TestCase):
     def test_insert_proxy_pull_leaves(self):
         dag = copy_dag(go_bp_main)
         original_size = len(dag)
-        go_root = "GO:0008150"
+        go_root = "GO:0000000"
         imbalanced = sum(is_imbalanced(term) for term in dag.values())
         dag_size = original_size
         leaf_ids = all_leaf_ids(dag)
-        plot_depth_distribution(dag, leaf_ids)
+        if plot:
+            plot_depth_distribution(dag, leaf_ids)
         # Balancing iterations
         while imbalanced > 0:
             insert_proxy_terms(dag, dag[go_root], original_size)
@@ -257,7 +269,8 @@ class Test(TestCase):
         go = copy_dag(go_bp_main)
         # Plot leaf depth distribution before and after merge-prune convergence
         leaf_ids = all_leaf_ids(go)
-        plot_depth_distribution(go, leaf_ids)
+        if plot:
+            plot_depth_distribution(go, leaf_ids)
         # First merge, then prune:
         pruning_events = 1
         merge_events = 1
@@ -271,7 +284,7 @@ class Test(TestCase):
 
     def test_load_relationships(self):
         go_rel_full = GODag("go-basic.obo", optional_attrs={"relationship"})
-        go_rel = filter_go_by_namespace(go_rel_full, "biological_process")
+        go_rel = filter_by_namespace(go_rel_full, {"biological_process"})
         del go_rel_full
         self.assertIsNotNone(go_rel["GO:0002893"].relationship)
         pass
@@ -279,14 +292,14 @@ class Test(TestCase):
     def test_leaf_relationships(self):
         go = copy_dag(go_bp_main)
         go_rel_full = copy_dag(go_rel_main)
-        go_rel = filter_go_by_namespace(go_rel_full, "biological_process")
+        go_rel = filter_by_namespace(go_rel_full, {"biological_process"})
         del go_rel_full
         leaf_ids = all_leaf_ids(go)
         leaf_ids_with_rel = [leaf_id for leaf_id in leaf_ids if len(go_rel[leaf_id].relationship_rev) > 0]
         print(f"{len(leaf_ids_with_rel)}/{len(leaf_ids)} leaves have children through relationships.")
 
     def test_relationships_to_parents(self):
-        go_bp_rel = filter_go_by_namespace(copy_dag(go_rel_main), "biological_process")
+        go_bp_rel = filter_by_namespace(copy_dag(go_rel_main), {"biological_process"})
         relationships_to_parents(go_bp_rel)
         self.assertEqual(len(go_bp_rel["GO:0000027"].children), 3)
         self.assertEqual(len(go_bp_rel["GO:0000027"].parents), 3)
@@ -295,39 +308,47 @@ class Test(TestCase):
         go_ref = copy_dag(go_main)
         go_rel_ref = copy_dag(go_rel_main)
         fig, (ax1, ax2) = plt.subplots(1, 2)
-
-        plot_depth_distribution(go_ref, go_ref.keys(), sub_fig=ax1,
-                                title="Only 'is_a' relationship")
-        ax1.legend(["Original"], title="(#p, #c)")
-        plot_depth_distribution(go_rel_ref, go_rel_ref.keys(), sub_fig=ax2,
-                                title="All relationships")
-        ax2.legend(["Original"], title="(#p, #c)")
-        ax2.set_ylabel("")
-        fig.suptitle("Distribution of GO-term depths for varying merge conditions")
-        plt.show()
-
-        merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
-        for merge_condition in merge_conditions:
-            go = copy_dag(go_ref)
-            go_rel = copy_dag(go_rel_ref)
-            relationships_to_parents(go_rel)
-            merge_prune_until_convergence(go, merge_condition[0], merge_condition[1])
-            merge_prune_until_convergence(go_rel, merge_condition[0], merge_condition[1])
-            fig, (ax1, ax2) = plt.subplots(1, 2)
-            plot_depth_distribution(go_ref, go_ref.keys(), sub_fig=ax1)
-            plot_depth_distribution(go, go.keys(), sub_fig=ax1,
+        if plot:
+            plot_depth_distribution(go_ref, go_ref.keys(), sub_fig=ax1,
                                     title="Only 'is_a' relationship")
-            plot_depth_distribution(go_rel_ref, go_rel_ref.keys(), sub_fig=ax2)
-            plot_depth_distribution(go_rel, go_rel.keys(), sub_fig=ax2,
+            ax1.legend(["Original"], title="(#p, #c)")
+            plot_depth_distribution(go_rel_ref, go_rel_ref.keys(), sub_fig=ax2,
                                     title="All relationships")
-            ax1.legend(["Original", merge_condition], title="(#p, #c)")
-            ax2.legend(["Original", merge_condition], title="(#p, #c)")
+            ax2.legend(["Original"], title="(#p, #c)")
             ax2.set_ylabel("")
             fig.suptitle("Distribution of GO-term depths for varying merge conditions")
             plt.show()
 
+        merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
+        for merge_condition in merge_conditions:
+            print(f"----- START: Merge condition: {merge_condition} -----")
+            go = copy_dag(go_ref)
+            go_rel = copy_dag(go_rel_ref)
+            merge_prune_until_convergence(go, merge_condition[0], merge_condition[1])
+            merge_prune_until_convergence(go_rel, merge_condition[0], merge_condition[1])
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            if plot:
+                plot_depth_distribution(go_ref, go_ref.keys(), sub_fig=ax1)
+                plot_depth_distribution(go, go.keys(), sub_fig=ax1,
+                                        title="Only 'is_a' relationship")
+                plot_depth_distribution(go_rel_ref, go_rel_ref.keys(), sub_fig=ax2)
+                plot_depth_distribution(go_rel, go_rel.keys(), sub_fig=ax2,
+                                        title="All relationships")
+                ax1.legend(["Original", merge_condition], title="(#p, #c)")
+                ax2.legend(["Original", merge_condition], title="(#p, #c)")
+                ax2.set_ylabel("")
+                fig.suptitle("Distribution of GO-term depths for varying merge conditions")
+                plt.show()
+
     def test_merge_prune_balance_pull_bp(self):
         go = copy_dag(go_bp_main)
+        merge_prune_until_convergence(go, 1, 1)
+        balance_until_convergence(go)
+        pull_leaves_down(go, len(go_bp_main))
+        print_dag_info(go)
+
+    def test_merge_prune_balance_pull(self):
+        go = copy_dag(go_main)
         merge_prune_until_convergence(go, 1, 1)
         balance_until_convergence(go)
         pull_leaves_down(go, len(go_bp_main))
