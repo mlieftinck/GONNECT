@@ -202,13 +202,14 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
 
 def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, threshold_children=1):
     """Iteratively apply merging and pruning for the given merge conditions, until the DAG converges."""
+    print("\n----- START: Merge-Prune until convergence -----")
     pruning_events, merge_events = 1, 1
     original_go_size = len(go)
     while pruning_events + merge_events > 0:
         merge_events = merge_chains(go, threshold_parents, threshold_children)
         pruning_events = prune_skip_connections(go)
-    print("\n----- COMPLETED: Merge-Prune until convergence -----\n")
     print(f"Remaining nodes: {len(go)}/{original_go_size}")
+    print("----- COMPLETED: Merge-Prune until convergence -----")
 
 
 def update_level_and_depth(term: GOTerm):
@@ -259,6 +260,7 @@ def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
 
 def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0000000"):
     """Iteratively apply balancing to the given DAG, until all nodes are balanced."""
+    print("\n----- START: Balancing DAG with proxies -----")
     original_size = len(go)
     imbalanced = sum(is_imbalanced(term) for term in go.values())
     dag_size = original_size
@@ -282,12 +284,13 @@ def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0000000"):
             stall = True
             stall_counter -= 1
         dag_size = len(go)
-    print("\n----- COMPLETED: Balancing DAG with proxies -----\n")
     print(f"Number of inserted balancing proxies: {len(go) - original_size}")
+    print("----- COMPLETED: Balancing DAG with proxies -----")
 
 
 def pull_leaves_down(go: dict[str, GOTerm], original_dag_size):
     """Add proxies above leaves until all leaves have equal depth."""
+    print("\n----- START: Pull leaves to maximum depth -----")
     pre_proxy_size = len(go)
     leaf_ids = all_leaf_ids(go)
     max_depth = max(go[leaf_id].depth for leaf_id in leaf_ids)
@@ -297,8 +300,8 @@ def pull_leaves_down(go: dict[str, GOTerm], original_dag_size):
             go[proxy_item_id] = ProxyTerm(proxy_item_id, {p for p in go[leaf_id].parents}, {go[leaf_id]})
             update_level_and_depth(go[proxy_item_id])
 
-    print("\n----- COMPLETED: Pull leaves to maximum depth -----\n")
     print(f"Number of inserted leaf proxies: {len(go) - pre_proxy_size}")
+    print("----- COMPLETED: Pull leaves to maximum depth -----")
 
 
 def relationships_to_parents(go_rel: dict[str, GOTerm]):

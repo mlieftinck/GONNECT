@@ -83,11 +83,14 @@ def layer_overlap(layers):
 
 
 def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha=0.5, bins=np.arange(18) - 0.5,
-                            title="Distribution of GO-term depths"):
+                            title="Distribution of GO-term depths", show_proxy=False):
     depths = []
     max_depth_term_id = "GO:0000001"
     min_depth_term_id = "GO:0000001"
     for term_id in term_ids:
+        if not show_proxy:
+            if term_id[:5] == "Proxy":
+                continue
         depths.append(go[term_id].depth)
         if go[term_id].depth > go[max_depth_term_id].depth:
             max_depth_term_id = term_id
