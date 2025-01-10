@@ -82,7 +82,7 @@ def layer_overlap(layers):
     return overlap
 
 
-def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha=0.5, bins=np.arange(18) - 0.5,
+def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha=0.5, bins=np.arange(20) - 0.5,
                             title="Distribution of GO-term depths", show_proxy=False):
     depths = []
     max_depth_term_id = "GO:0000001"
@@ -102,13 +102,13 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha
     if sub_fig:
         sub_fig.set_xlabel("Depth")
         sub_fig.set_ylabel("Number of terms")
-        sub_fig.set_xticks(np.arange(stop=18, step=2))
+        sub_fig.set_xticks(np.arange(stop=20, step=2))
         sub_fig.set_title(title)
         sub_fig.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
     else:
         plt.xlabel("Depth")
         plt.ylabel("Number of terms")
-        plt.xticks(np.arange(stop=18, step=2))
+        plt.xticks(np.arange(stop=20, step=2))
         plt.title(title)
         plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
 

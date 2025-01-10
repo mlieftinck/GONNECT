@@ -14,7 +14,7 @@ go_main = create_dag("go-basic.obo")
 go_bp_main = filter_by_namespace(go_main, {"biological_process"})
 go_rel_main = create_dag("go-basic.obo", rel=True)
 relationships_to_parents(go_rel_main)
-plot = True
+plot = False
 
 
 class Test(TestCase):
@@ -316,10 +316,10 @@ class Test(TestCase):
                                     title="All relationships")
             ax2.legend(["Original"], title="(#p, #c)")
             ax2.set_ylabel("")
-            fig.suptitle("Distribution of GO-term depths after Merge-Prune-Balance-Pull")
+            fig.suptitle("Distribution of GO-term depths after Merge-Prune(-Balance-Pull)")
             plt.show()
 
-        merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
+        merge_conditions = [(0, 0), (1, 1)]#, (1, 2), (1, 3), (2, 3), (2, 4)]
         for merge_condition in merge_conditions:
             print(f"\n----- Merge condition: {merge_condition} -----")
             go = copy_dag(go_ref)
@@ -330,6 +330,8 @@ class Test(TestCase):
             balance_until_convergence(go_rel)
             pull_leaves_down(go, len(go_ref))
             pull_leaves_down(go_rel, len(go_rel_ref))
+            print_dag_info(go)
+            print_dag_info(go_rel)
             fig, (ax1, ax2) = plt.subplots(1, 2)
             if plot:
                 plot_depth_distribution(go_ref, go_ref.keys(), sub_fig=ax1)
@@ -341,7 +343,7 @@ class Test(TestCase):
                 ax1.legend(["Original", merge_condition], title="(#p, #c)")
                 ax2.legend(["Original", merge_condition], title="(#p, #c)")
                 ax2.set_ylabel("")
-                fig.suptitle("Distribution of GO-term depths after Merge-Prune-Balance-Pull")
+                fig.suptitle("Distribution of GO-term depths after Merge-Prune(-Balance-Pull)")
                 plt.show()
 
     def test_merge_prune_balance_pull_bp(self):
