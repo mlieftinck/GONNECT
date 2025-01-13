@@ -4,20 +4,15 @@ from AE_vanilla import Decoder
 
 
 class VarEncoder(nn.Module):
-    def __init__(self, latent_dims, s_img, hdim):
+    def __init__(self, go_layers):
         super(VarEncoder, self).__init__()
-
-        # layers for g1
-        self.linear1_1 = nn.Linear(s_img * s_img, hdim[0])
-        self.linear2_1 = nn.Linear(hdim[0], hdim[1])
-        self.linear3_1 = nn.Linear(hdim[1], latent_dims)
-
-        # layers for g2
-        self.linear1_2 = nn.Linear(s_img * s_img, hdim[0])
-        self.linear2_2 = nn.Linear(hdim[0], hdim[1])
-        self.linear3_2 = nn.Linear(hdim[1], latent_dims)
-
+        self.layers_mu = []
+        self.layers_sigma = []
         self.relu = nn.ReLU()
+
+        for i in range(len(go_layers) - 1):
+            self.layers_mu.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
+            self.layers_sigma.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
 
         # distribution setup
         self.N = torch.distributions.Normal(0, 1)
@@ -34,30 +29,32 @@ class VarEncoder(nn.Module):
         return mu + sig * self.N.sample(mu.shape)
 
     def forward(self, x):
-        x1 = self.relu(self.linear1_1(x))
-        x1 = self.relu(self.linear2_1(x1))
+        x_mu = x.copy()
+        x_sigma = x.copy()
+        for i in range(len(self.layers_mu) - 1):
+            x_mu = self.relu(self.layers_mu[i](x_mu))
 
-        x2 = self.relu(self.linear1_2(x))
-        x2 = self.relu(self.linear2_2(x2))
+        for j in range(len(self.layers_sigma) - 1):
+            x_sigma = self.relu(self.layers_sigma[j](x_sigma))
 
-        # Form distribution (exp() so encoder learns log(sig))
-        sig = torch.exp(self.linear3_1(x1))
-        mu = self.linear3_2(x2)
+        # Form distribution (exp() so encoder learns log(sigma))
+        sigma = torch.exp(self.layers_sigma[-1](x_sigma))
+        mu = self.layers_mu[-1](x_mu)
 
         # Reparameterize to find z
-        z = self.reparameterize(mu, sig)
+        z = self.reparameterize(mu, sigma)
 
         # loss between N(0,I) and learned distribution
-        self.kl = self.kull_leib(mu, sig)
+        self.kl = self.kull_leib(mu, sigma)
         return z
 
 
 class VarAutoencoder(nn.Module):
-    def __init__(self, latent_dims, s_img, hdim=[100, 50]):
+    def __init__(self, go_layers):
         super(VarAutoencoder, self).__init__()
 
-        self.encoder = VarEncoder(latent_dims, s_img, hdim)
-        self.decoder = Decoder(latent_dims, s_img, hdim)
+        self.encoder = VarEncoder(go_layers)
+        self.decoder = Decoder(list(reversed(go_layers)))
 
     def forward(self, x):
         z = self.encoder(x)
