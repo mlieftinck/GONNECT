@@ -125,15 +125,16 @@ def print_dag_info(dag: dict[str, GOTerm]):
     print(f"Max depth: {max(term.depth for term in dag.values())}")
 
 def create_layers(dag: dict[str, GOTerm], root_id="GO:0000000"):
-    """Return a list of sets containing nodes with equal depth."""
-    layers = [{dag[root_id]}]
-    next_layer = dag[root_id].children
+    """Return a list of sorted collections of nodes with equal depth."""
+    layers = [[dag[root_id]]]
+    next_layer = sorted(list(dag[root_id].children), key=lambda x: x.item_id)
     layers.append(next_layer)
-    prev_layer = dag[root_id].children
+    prev_layer = next_layer.copy()
     while len(next_layer) > 0:
         next_layer = set()
         for node in prev_layer:
             next_layer.update(node.children)
+        next_layer = sorted(list(next_layer), key=lambda x: x.item_id)
         layers.append(next_layer)
-        prev_layer = next_layer
-    return layers
+        prev_layer = next_layer.copy()
+    return layers[:-1]
