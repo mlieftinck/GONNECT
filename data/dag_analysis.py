@@ -89,8 +89,11 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha
     min_depth_term_id = "GO:0000001"
     for term_id in term_ids:
         if not show_proxy:
-            if term_id[:5] == "Proxy":
+            if isinstance(go[term_id], ProxyTerm):
                 continue
+            # # Does the same as the if statement above, but is less robust
+            # if term_id[:5] == "Proxy":
+            #     continue
         depths.append(go[term_id].depth)
         if go[term_id].depth > go[max_depth_term_id].depth:
             max_depth_term_id = term_id
@@ -120,3 +123,17 @@ def print_dag_info(dag: dict[str, GOTerm]):
     print(f"Number of leafs: {len(all_leaf_ids(dag))}")
     print(f"Proxy terms: {proxies}/{terms} = {proxies / terms * 100:.1f}%")
     print(f"Max depth: {max(term.depth for term in dag.values())}")
+
+def create_layers(dag: dict[str, GOTerm], root_id="GO:0000000"):
+    """Return a list of sets containing nodes with equal depth."""
+    layers = [{dag[root_id]}]
+    next_layer = dag[root_id].children
+    layers.append(next_layer)
+    prev_layer = dag[root_id].children
+    while len(next_layer) > 0:
+        next_layer = set()
+        for node in prev_layer:
+            next_layer.update(node.children)
+        layers.append(next_layer)
+        prev_layer = next_layer
+    return layers

@@ -2,7 +2,7 @@ from unittest import TestCase
 from goatools.obo_parser import GODag
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-from data.dag_analysis import is_imbalanced, print_dag_info
+from data.dag_analysis import is_imbalanced, print_dag_info, create_layers
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
     merge_prune_until_convergence, balance_until_convergence
@@ -14,7 +14,7 @@ go_main = create_dag("go-basic.obo")
 go_bp_main = filter_by_namespace(go_main, {"biological_process"})
 go_rel_main = create_dag("go-basic.obo", rel=True)
 relationships_to_parents(go_rel_main)
-plot = False
+plot = True
 
 
 class Test(TestCase):
@@ -316,10 +316,10 @@ class Test(TestCase):
                                     title="All relationships")
             ax2.legend(["Original"], title="(#p, #c)")
             ax2.set_ylabel("")
-            fig.suptitle("Distribution of GO-term depths after Merge-Prune(-Balance-Pull)")
+            fig.suptitle("Distribution of GO-term depths after Merge-Prune-Balance-Pull")
             plt.show()
 
-        merge_conditions = [(0, 0), (1, 1)]#, (1, 2), (1, 3), (2, 3), (2, 4)]
+        merge_conditions = [(0, 0), (1, 1), (1, 2), (1, 3), (2, 3), (2, 4)]
         for merge_condition in merge_conditions:
             print(f"\n----- Merge condition: {merge_condition} -----")
             go = copy_dag(go_ref)
@@ -343,7 +343,7 @@ class Test(TestCase):
                 ax1.legend(["Original", merge_condition], title="(#p, #c)")
                 ax2.legend(["Original", merge_condition], title="(#p, #c)")
                 ax2.set_ylabel("")
-                fig.suptitle("Distribution of GO-term depths after Merge-Prune(-Balance-Pull)")
+                fig.suptitle("Distribution of GO-term depths after Merge-Prune-Balance-Pull")
                 plt.show()
 
     def test_merge_prune_balance_pull_bp(self):
@@ -359,3 +359,11 @@ class Test(TestCase):
         balance_until_convergence(go)
         pull_leaves_down(go, len(go_bp_main))
         print_dag_info(go)
+
+    def test_layerization_results(self):
+        go = copy_dag(go_rel_main)
+        balance_until_convergence(go)
+        pull_leaves_down(go, len(go_rel_main))
+        print_dag_info(go)
+        layers = create_layers(go)
+        pass
