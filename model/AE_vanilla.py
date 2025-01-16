@@ -8,11 +8,12 @@ class Encoder(nn.Module):
         self.relu = nn.ReLU()
         for i in range(len(go_layers) - 1):
             self.layers.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
+            if i < len(go_layers) - 2:
+                self.layers.append(self.relu)
+        self.layers = nn.Sequential(*self.layers)
 
     def forward(self, x):
-        for layer in self.layers:
-            x = self.relu(layer(x))
-        return x
+        return self.layers(x)
 
 
 class Decoder(nn.Module):
@@ -22,18 +23,21 @@ class Decoder(nn.Module):
         self.relu = nn.ReLU()
         for i in range(len(go_layers) - 1):
             self.layers.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
+            if i < len(go_layers) - 2:
+                self.layers.append(self.relu)
+            else:
+                self.layers.append(nn.Sigmoid())
+        self.layers = nn.Sequential(*self.layers)
 
     def forward(self, z):
-        for layer in self.layers:
-            z = self.relu(layer(z))
-        return z
+        return self.layers(z)
 
 
 class Autoencoder(nn.Module):
     def __init__(self, go_layers):
         super(Autoencoder, self).__init__()
-        self.encoder = Encoder(go_layers)
-        self.decoder = Decoder(list(reversed(go_layers)))
+        self.encoder = Encoder(list(reversed(go_layers)))
+        self.decoder = Decoder(go_layers)
 
     def forward(self, x):
         z = self.encoder(x)

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from AE_vanilla import Decoder
+from model.AE_vanilla import Decoder
 
 
 class VarEncoder(nn.Module):
@@ -13,6 +13,11 @@ class VarEncoder(nn.Module):
         for i in range(len(go_layers) - 1):
             self.layers_mu.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
             self.layers_sigma.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
+            if i < len(go_layers) - 2:
+                self.layers_mu.append(self.relu)
+                self.layers_sigma.append(self.relu)
+        self.layers_mu = nn.Sequential(*self.layers_mu)
+        self.layers_sigma = nn.Sequential(*self.layers_sigma)
 
         # distribution setup
         self.N = torch.distributions.Normal(0, 1)
@@ -29,17 +34,12 @@ class VarEncoder(nn.Module):
         return mu + sig * self.N.sample(mu.shape)
 
     def forward(self, x):
-        x_mu = x.copy()
-        x_sigma = x.copy()
-        for i in range(len(self.layers_mu) - 1):
-            x_mu = self.relu(self.layers_mu[i](x_mu))
-
-        for j in range(len(self.layers_sigma) - 1):
-            x_sigma = self.relu(self.layers_sigma[j](x_sigma))
+        x_mu = self.layers_mu(x)
+        x_sigma = self.layers_sigma(x)
 
         # Form distribution (exp() so encoder learns log(sigma))
-        sigma = torch.exp(self.layers_sigma[-1](x_sigma))
-        mu = self.layers_mu[-1](x_mu)
+        sigma = torch.exp(x_sigma)
+        mu = x_mu
 
         # Reparameterize to find z
         z = self.reparameterize(mu, sigma)
@@ -53,8 +53,8 @@ class VarAutoencoder(nn.Module):
     def __init__(self, go_layers):
         super(VarAutoencoder, self).__init__()
 
-        self.encoder = VarEncoder(go_layers)
-        self.decoder = Decoder(list(reversed(go_layers)))
+        self.encoder = VarEncoder(list(reversed(go_layers)))
+        self.decoder = Decoder(go_layers)
 
     def forward(self, x):
         z = self.encoder(x)
