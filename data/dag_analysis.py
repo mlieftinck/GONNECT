@@ -72,7 +72,6 @@ def number_of_children(go: dict[str, GOTerm], term_ids):
 def layer_overlap(layers):
     """Returns a dict containing the intersection of each possible pair of layers"""
     overlap = {}
-    k = 0
     for k in range(len(layers) - 1):
         for i in range(k + 1, len(layers)):
             if i == k:
@@ -105,13 +104,13 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha
     if sub_fig:
         sub_fig.set_xlabel("Depth")
         sub_fig.set_ylabel("Number of terms")
-        sub_fig.set_xticks(np.arange(stop=20, step=2))
+        sub_fig.set_xticks(np.arange(start=0, stop=20, step=2))
         sub_fig.set_title(title)
         sub_fig.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
     else:
         plt.xlabel("Depth")
         plt.ylabel("Number of terms")
-        plt.xticks(np.arange(stop=20, step=2))
+        plt.xticks(np.arange(start=0, stop=20, step=2))
         plt.title(title)
         plt.hist(depths, alpha=alpha, bins=bins, edgecolor="k")
 
@@ -123,6 +122,7 @@ def print_dag_info(dag: dict[str, GOTerm]):
     print(f"Number of leafs: {len(all_leaf_ids(dag))}")
     print(f"Proxy terms: {proxies}/{terms} = {proxies / terms * 100:.1f}%")
     print(f"Max depth: {max(term.depth for term in dag.values())}")
+
 
 def create_layers(dag: dict[str, GOTerm], root_id="GO:0000000"):
     """Return a list of sorted collections of nodes with equal depth."""
@@ -138,3 +138,13 @@ def create_layers(dag: dict[str, GOTerm], root_id="GO:0000000"):
         layers.append(next_layer)
         prev_layer = next_layer.copy()
     return layers[:-1]
+
+
+def only_go_terms(dag: dict[str, GOTerm]):
+    """Returns all IDs of genuine terms and ignores proxy terms."""
+    go_term_ids = []
+    for term_id in dag.keys():
+        if isinstance(dag[term_id], ProxyTerm):
+            continue
+        go_term_ids.append(term_id)
+    return go_term_ids
