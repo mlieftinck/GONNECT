@@ -1,6 +1,6 @@
 from goatools.obo_parser import *
 import time
-from dag_analysis import *
+from data.dag_analysis import *
 from data.ProxyTerm import ProxyTerm
 
 
@@ -153,7 +153,7 @@ def prune_skip_connections(go: dict[str, GOTerm]):
                 # Update level and depth after skip removal
                 update_level_and_depth(go[term_id])
 
-    # print(f"Pruning events: {pruning_events}")
+    print(f"Pruning events: {pruning_events}")
     return pruning_events
 
 
@@ -163,6 +163,8 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
     merge_events = 0
     merged_term_ids = []
     term_ids = go.keys()
+    # Debug:
+    removed_terms = []
     for term_id in term_ids:
         term = go[term_id]
 
@@ -175,7 +177,8 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         # Check merge conditions (root and leaves are never merged)
         if (len(children) > 0) and (len(parents) > 0):
             if (len(parents) <= threshold_parents) & (len(children) <= threshold_children):
-
+                # Debug:
+                removed_terms.append(term_id)
                 # Update parent-child relations
                 for parent in parents:
                     parent.children.remove(term)
@@ -196,8 +199,8 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
     for merged_id in merged_term_ids:
         go.pop(merged_id)
 
-    # print(f"Merge events: {merge_events}")
-    return merge_events
+    print(f"Merge events: {merge_events}")
+    return merge_events, removed_terms
 
 
 def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, threshold_children=1):
@@ -205,11 +208,15 @@ def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, th
     print("\n----- START: Merge-Prune until convergence -----")
     pruning_events, merge_events = 1, 1
     original_go_size = len(go)
-    while pruning_events + merge_events > 0:
-        merge_events = merge_chains(go, threshold_parents, threshold_children)
+    # Debug:
+    removed_terms = []
+    while merge_events > 0:
+        merge_events, removed = merge_chains(go, threshold_parents, threshold_children)
         pruning_events = prune_skip_connections(go)
+        removed_terms.append(removed)
     print(f"Remaining nodes: {len(go)}/{original_go_size}")
     print("----- COMPLETED: Merge-Prune until convergence -----")
+    return removed_terms
 
 
 def update_level_and_depth(term: GOTerm):
@@ -306,8 +313,14 @@ def pull_leaves_down(go: dict[str, GOTerm], original_dag_size):
 
 def relationships_to_parents(go_rel: dict[str, GOTerm]):
     """Update parent-child relationships to include all possible relationships."""
+    relationship_check = True
     for term_id in go_rel.keys():
         term = go_rel[term_id]
+        if relationship_check:
+            if not hasattr(term, "relationship"):
+                raise Exception("GO terms must have an attribute 'relationship'.")
+            relationship_check = False
+
         for relationship_type, members in term.relationship.items():
             term.parents.update(members)
             for member in members:

@@ -2,7 +2,7 @@ from unittest import TestCase
 from goatools.obo_parser import GODag
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-from data.dag_analysis import is_imbalanced, print_dag_info, create_layers
+from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
     merge_prune_until_convergence, balance_until_convergence
@@ -13,8 +13,9 @@ from ProxyTerm import ProxyTerm
 go_main = create_dag("go-basic.obo")
 go_bp_main = filter_by_namespace(go_main, {"biological_process"})
 go_rel_main = create_dag("go-basic.obo", rel=True)
+go_rel_main_parentless = copy_dag(go_rel_main)
 relationships_to_parents(go_rel_main)
-plot = True
+plot = False
 
 
 class Test(TestCase):
@@ -61,9 +62,8 @@ class Test(TestCase):
         intersections_a = layer_overlap(layers_with_duplicates(go))
         pruning_events = prune_skip_connections(go)
         intersections_b = layer_overlap(layers_with_duplicates(go))
-        sizes_a = [len(intersections_a[i]) for i in intersections_a]
-        sizes_b = [len(intersections_b[i]) for i in intersections_b]
         self.assertEqual(pruning_events, 0)
+        self.assertEqual(len(intersections_a), len(intersections_b))
 
     #      A
     #    / |
@@ -246,8 +246,6 @@ class Test(TestCase):
         imbalanced = sum(is_imbalanced(term) for term in dag.values())
         dag_size = original_size
         leaf_ids = all_leaf_ids(dag)
-        if plot:
-            plot_depth_distribution(dag, leaf_ids)
         # Balancing iterations
         while imbalanced > 0:
             insert_proxy_terms(dag, dag[go_root], original_size)
@@ -366,4 +364,73 @@ class Test(TestCase):
         pull_leaves_down(go, len(go_rel_main))
         print_dag_info(go)
         layers = create_layers(go)
+        self.assertIsNotNone(layers)
+
+    def test_merge_condition_effects(self):
+        merge_condition = (1, 30)
+        go = copy_dag(go_rel_main)
+        print_dag_info(go)
+        plot_depth_distribution(go, go.keys(), alpha=0.2)
+
+        merge_prune_until_convergence(go, merge_condition[0], merge_condition[1])
+
+        balance_until_convergence(go)
+        pull_leaves_down(go, len(go_rel_main))
+        print_dag_info(go)
+        plot_depth_distribution(go, go.keys())
+        plt.legend(["(≥0, ≥0)", f"(≥{merge_condition[0]}, ≥{merge_condition[1]})"], title="(#parents, #children)")
+        plt.show()
+
+    def test_debug_merge_rel(self):
+        go_ref = copy_dag(go_main)
+        go_rel_ref = copy_dag(go_rel_main)
+        go = copy_dag(go_main)
+        go_rel = copy_dag(go_rel_main)
+        go_merge1 = copy_dag(go_main)
+        go_rel_merge1 = copy_dag(go_rel_main)
+        go_prune = copy_dag(go_main)
+        go_rel_prune = copy_dag(go_rel_main)
+        go_merge2 = copy_dag(go_main)
+        go_rel_merge2 = copy_dag(go_rel_main)
+
+        # All merge iterations, commented out for faster debugging
+        # removed_terms_converged = merge_prune_until_convergence(go, 1, 1)
+        # removed_terms_rel_converged = merge_prune_until_convergence(go_rel, 1, 1)
+        # iteration_difference_converged = []
+        # for i in range(len(removed_terms_converged)):
+        #     iteration_difference_converged.append(list(set(removed_terms_converged[i])-set(removed_terms_rel_converged[i])))
+
+        _, removed_terms1 = merge_chains(go_merge1, 1, 1)
+        _, removed_terms_rel1 = merge_chains(go_rel_merge1, 1, 1)
+
+        merge_chains(go_prune, 1, 1)
+        prune_skip_connections(go_prune)
+        merge_chains(go_rel_prune, 1, 1)
+        prune_skip_connections(go_rel_prune)
+
+        merge_chains(go_merge2, 1, 1)
+        prune_skip_connections(go_merge2)
+        _, removed_terms2 = merge_chains(go_merge2, 1, 1)
+        merge_chains(go_rel_merge2, 1, 1)
+        prune_skip_connections(go_rel_merge2)
+        _, removed_terms_rel2 = merge_chains(go_rel_merge2, 1, 1)
+
+        overlap_merge1 = list(set(removed_terms1).intersection(set(removed_terms_rel1)))
+        difference_isa_rel_merge1 = list(set(removed_terms1)-set(removed_terms_rel1))
+        difference_rel_isa_merge1 = list(set(removed_terms_rel1) - set(removed_terms1))
+
+        overlap_m1 = [go_rel_main_parentless[x] for x in overlap_merge1]
+        diff_i_r_m1 = [go_rel_main_parentless[x] for x in difference_isa_rel_merge1]
+        diff_r_i_m1 = [go_rel_main_parentless[x] for x in difference_rel_isa_merge1]
+
+        # Terms that are removed in rel, but not in isa:
+        # Are they all examples of Case 1? (leaf in isa, not in rel)
+        case_1 = []
+        other = []
+        for i, term_id in enumerate(difference_rel_isa_merge1):
+            if len(go_ref[term_id].children) == 0:
+                if len(go_rel_ref[term_id].children) > 0:
+                    case_1.append(diff_r_i_m1[i])
+                    continue
+            other.append(diff_r_i_m1[i])
         pass
