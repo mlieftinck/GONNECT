@@ -2,6 +2,7 @@ from goatools.obo_parser import GOTerm
 import matplotlib.pyplot as plt
 import numpy as np
 
+from data.GeneTerm import GeneTerm
 from data.ProxyTerm import ProxyTerm
 
 
@@ -15,13 +16,28 @@ def is_imbalanced(term: GOTerm) -> bool:
     return term.level != term.depth
 
 
+def all_go_leaf_ids(go: dict[str, GOTerm]):
+    """Returns all term IDs with 0 child terms. Genes do not count as children."""
+    leaf_ids = set()
+    for term_id in go.keys():
+        if isinstance(go[term_id], GeneTerm) or isinstance(go[term_id], ProxyTerm):
+            continue
+        is_leaf = True
+        for child in go[term_id].children:
+            if not (isinstance(child, GeneTerm) or isinstance(child, ProxyTerm)):
+                is_leaf = False
+        if is_leaf:
+            leaf_ids.add(term_id)
+    return leaf_ids
+
+
 def all_leaf_ids(go: dict[str, GOTerm]):
-    """Returns all term IDs with 0 children."""
-    leaves = set()
-    for term in go:
-        if len(go[term].children) == 0:
-            leaves.add(term)
-    return leaves
+    """Returns all term IDs with no children."""
+    leaf_ids = set()
+    for term_id in go.keys():
+        if len(go[term_id].children) == 0:
+            leaf_ids.add(term_id)
+    return leaf_ids
 
 
 def direct_parents(go: dict[str, GOTerm], term_ids):
@@ -116,10 +132,12 @@ def plot_depth_distribution(go: dict[str, GOTerm], term_ids, sub_fig=None, alpha
 
 
 def print_dag_info(dag: dict[str, GOTerm]):
-    proxies = len([term for term in dag.values() if isinstance(term, ProxyTerm)])
     terms = len(dag.values())
-    print(f"Number of nodes: {terms}")
+    proxies = len([term for term in dag.values() if isinstance(term, ProxyTerm)])
+    genes = len([term for term in dag.values() if isinstance(term, GeneTerm)])
+    print(f"\nNumber of nodes: {terms}")
     print(f"Number of leafs: {len(all_leaf_ids(dag))}")
+    print(f"number of genes: {genes}")
     print(f"Proxy terms: {proxies}/{terms} = {proxies / terms * 100:.1f}%")
     print(f"Max depth: {max(term.depth for term in dag.values())}")
 
@@ -148,3 +166,14 @@ def only_go_terms(dag: dict[str, GOTerm]):
             continue
         go_term_ids.append(term_id)
     return go_term_ids
+
+
+def genes_not_on_leaves_ids(dag: dict[str, GOTerm]):
+    non_leaf_gene_ids = set()
+    for term_id in dag.keys():
+        if isinstance(dag[term_id], GeneTerm):
+            for parent in dag[term_id].parents:
+                for child in parent.children:
+                    if not isinstance(child, GeneTerm):
+                        non_leaf_gene_ids.add(term_id)
+    return non_leaf_gene_ids

@@ -1,5 +1,8 @@
+from goatools.anno.gaf_reader import GafReader
 from goatools.obo_parser import *
 import time
+
+from data.GeneTerm import GeneTerm
 from data.dag_analysis import *
 from data.ProxyTerm import ProxyTerm
 
@@ -153,7 +156,7 @@ def prune_skip_connections(go: dict[str, GOTerm]):
                 # Update level and depth after skip removal
                 update_level_and_depth(go[term_id])
 
-    print(f"Pruning events: {pruning_events}")
+    # print(f"Pruning events: {pruning_events}")
     return pruning_events
 
 
@@ -199,7 +202,7 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
     for merged_id in merged_term_ids:
         go.pop(merged_id)
 
-    print(f"Merge events: {merge_events}")
+    # print(f"Merge events: {merge_events}")
     return merge_events, removed_terms
 
 
@@ -210,10 +213,10 @@ def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, th
     original_go_size = len(go)
     # Debug:
     removed_terms = []
-    while merge_events > 0:
+    while merge_events + pruning_events > 0:
         merge_events, removed = merge_chains(go, threshold_parents, threshold_children)
         pruning_events = prune_skip_connections(go)
-        removed_terms.append(removed)
+        removed_terms += removed
     print(f"Remaining nodes: {len(go)}/{original_go_size}")
     print("----- COMPLETED: Merge-Prune until convergence -----")
     return removed_terms
@@ -223,7 +226,7 @@ def update_level_and_depth(term: GOTerm):
     """Set level and depth of the given node and update all its descendants."""
     if len(term.parents) == 0:
         if term.item_id != "GO:0000000":
-            print("WARNING: Current term has no parents, but is not original root.")
+            print(f"WARNING: Current term ({term.item_id}) has no parents, but is not original root.")
 
     else:
         term.level = min(parent.level for parent in term.parents) + 1
@@ -328,7 +331,63 @@ def relationships_to_parents(go_rel: dict[str, GOTerm]):
     update_level_and_depth(go_rel["GO:0000000"])
 
 
+def has_relationships(go: dict[str, GOTerm]):
+    """Return true if the first term in the dictionary has a 'relationship' attribute. """
+    return hasattr(next(iter(go.values())), "relationship")
+
+
+def encode_namespace(namespace: str):
+    """Converts full namespace name to the abbreviated form, to comply with goatools."""
+    if namespace == "biological_process":
+        return "BP"
+    elif namespace == "cellular_component":
+        return "CC"
+    elif namespace == "molecular_function":
+        return "MF"
+    raise Exception(f"Invalid namespace: {namespace}")
+
+
+def link_genes_to_go_by_namespace(go: dict[str, GOTerm], goa_path: str, namespace):
+    """Given the path to a '.goa' annotation file, add annotated genes to DAG for given namespace.
+    Gene might already be present under different namespace, in which case additional annotations
+    are added to the existing set of parent terms."""
+    print(f"\n----- START: Retrieving gene annotations for {namespace} -----")
+    namespace_code = encode_namespace(namespace)
+    gaf_reader = GafReader(goa_path)
+    annotations = gaf_reader.get_id2gos(namespace_code)
+    print(f"----- COMPLETED: Retrieving gene annotations for {namespace} -----")
+
+    relationships = has_relationships(go)
+    print("\n----- START: Linking genes to GO-terms -----")
+    linked_genes = -len(go.keys())
+    for annotation in annotations.items():
+        add_gene(go, annotation, relationships, namespace)
+    linked_genes += len(go.keys())
+    print(f"Successfully linked {linked_genes}/{len(annotations.keys())} new {namespace} annotations.")
+    print("----- COMPLETED: Linking genes to GO-terms -----")
+
+
+def add_gene(go: dict[str, GOTerm], annotation, relationships, namespace):
+    gene_id, term_ids = annotation
+    available_parents = {go[parent_id] for parent_id in term_ids if parent_id in go.keys()}
+    if gene_id in go.keys():
+        for term in available_parents:
+            go[gene_id].parents.add(term)
+
+    # Some genes have only obsolete parents, these are not added to the DAG
+    if len(available_parents) > 0:
+        gene = GeneTerm(gene_id, available_parents, namespace)
+        if relationships:
+            gene.relationship = {}
+            gene.relationship_rev = {}
+        go[gene_id] = gene
+        update_level_and_depth(gene)
+    else:
+        print(f"Skipping {gene_id} as it has no parents in current DAG.")
+
+
 if __name__ == "__main__":
+    """OBSOLETE: Moved to test_go_preprocessing.py"""
     t_start = time.time()
     obo_file = "go-basic.obo"
     use_reference = 0

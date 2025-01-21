@@ -2,10 +2,10 @@ from unittest import TestCase
 from goatools.obo_parser import GODag
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms
+from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms, genes_not_on_leaves_ids
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
-    merge_prune_until_convergence, balance_until_convergence
+    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace
 from go_preprocessing import create_dag, copy_dag, filter_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
@@ -377,9 +377,10 @@ class Test(TestCase):
         balance_until_convergence(go)
         pull_leaves_down(go, len(go_rel_main))
         print_dag_info(go)
-        plot_depth_distribution(go, go.keys())
-        plt.legend(["(≥0, ≥0)", f"(≥{merge_condition[0]}, ≥{merge_condition[1]})"], title="(#parents, #children)")
-        plt.show()
+        if plot:
+            plot_depth_distribution(go, go.keys())
+            plt.legend(["(≥0, ≥0)", f"(≥{merge_condition[0]}, ≥{merge_condition[1]})"], title="(#parents, #children)")
+            plt.show()
 
     def test_debug_merge_rel(self):
         go_ref = copy_dag(go_main)
@@ -394,8 +395,8 @@ class Test(TestCase):
         go_rel_merge2 = copy_dag(go_rel_main)
 
         # All merge iterations, commented out for faster debugging
-        # removed_terms_converged = merge_prune_until_convergence(go, 1, 1)
-        # removed_terms_rel_converged = merge_prune_until_convergence(go_rel, 1, 1)
+        removed_terms_converged = merge_prune_until_convergence(go, 1, 1)
+        removed_terms_rel_converged = merge_prune_until_convergence(go_rel, 1, 1)
         # iteration_difference_converged = []
         # for i in range(len(removed_terms_converged)):
         #     iteration_difference_converged.append(list(set(removed_terms_converged[i])-set(removed_terms_rel_converged[i])))
@@ -416,21 +417,53 @@ class Test(TestCase):
         _, removed_terms_rel2 = merge_chains(go_rel_merge2, 1, 1)
 
         overlap_merge1 = list(set(removed_terms1).intersection(set(removed_terms_rel1)))
-        difference_isa_rel_merge1 = list(set(removed_terms1)-set(removed_terms_rel1))
+        difference_isa_rel_merge1 = list(set(removed_terms1) - set(removed_terms_rel1))
         difference_rel_isa_merge1 = list(set(removed_terms_rel1) - set(removed_terms1))
+        difference_rel_isa_converged = list(set(removed_terms_rel_converged) - set(removed_terms_converged))
 
-        overlap_m1 = [go_rel_main_parentless[x] for x in overlap_merge1]
-        diff_i_r_m1 = [go_rel_main_parentless[x] for x in difference_isa_rel_merge1]
-        diff_r_i_m1 = [go_rel_main_parentless[x] for x in difference_rel_isa_merge1]
+        # overlap_m1 = [go_rel_main_parentless[x] for x in overlap_merge1]
+        # diff_i_r_m1 = [go_rel_main_parentless[x] for x in difference_isa_rel_merge1]
+        # diff_r_i_m1 = [go_rel_main_parentless[x] for x in difference_rel_isa_merge1]
+        diff_r_i_conv = [go_rel_main_parentless[x] for x in difference_rel_isa_converged]
 
         # Terms that are removed in rel, but not in isa:
-        # Are they all examples of Case 1? (leaf in isa, not in rel)
+        # Are they all examples of Case 1? (leaf in isa, not in rel) -> Yes
         case_1 = []
         other = []
-        for i, term_id in enumerate(difference_rel_isa_merge1):
+        for i, term_id in enumerate(difference_rel_isa_converged):
             if len(go_ref[term_id].children) == 0:
                 if len(go_rel_ref[term_id].children) > 0:
-                    case_1.append(diff_r_i_m1[i])
+                    case_1.append(diff_r_i_conv[i])
                     continue
-            other.append(diff_r_i_m1[i])
+            other.append(diff_r_i_conv[i])
+        pass
+
+    def test_link_genes_bp(self):
+        """Result: Three genes not linked because their annotated GO terms are obsolete."""
+        go = copy_dag(go_bp_main)
+        print_dag_info(go)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        print_dag_info(go)
+        print(f"Genes not on leafs: {len(genes_not_on_leaves_ids(go))}")
+
+    def test_link_genes_all_namespaces(self):
+        """Result: Genes are added to non-leaf GO-terms."""
+        go = copy_dag(go_rel_main)
+        print_dag_info(go)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "cellular_component")
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "molecular_function")
+        print_dag_info(go)
+        print(f"Genes not on leafs: {len(genes_not_on_leaves_ids(go))}")
+
+    def test_link_merge_prune_balance_pull_bp(self):
+        go = copy_dag(go_bp_main)
+        print_dag_info(go)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        merge_prune_until_convergence(go, 1, 10)
+        balance_until_convergence(go)
+        pull_leaves_down(go, len(go_bp_main))
+        print_dag_info(go)
+        print(f"Genes not on leafs: {len(genes_not_on_leaves_ids(go))}")
+        layers = create_layers(go)
         pass
