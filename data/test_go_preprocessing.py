@@ -2,10 +2,13 @@ from unittest import TestCase
 from goatools.obo_parser import GODag
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms, genes_not_on_leaves_ids
+
+from data.GeneTerm import GeneTerm
+from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms, genes_not_on_leaves_ids, \
+    print_layers, is_alternative_id, create_layers_deprecated
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
-    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace
+    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace, remove_geneless_branches
 from go_preprocessing import create_dag, copy_dag, filter_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
@@ -383,6 +386,7 @@ class Test(TestCase):
             plt.show()
 
     def test_debug_merge_rel(self):
+        """Out of 1081 merges in rel not in isa, 1060 were Case 1. The other 21 remain unidentified."""
         go_ref = copy_dag(go_main)
         go_rel_ref = copy_dag(go_rel_main)
         go = copy_dag(go_main)
@@ -457,6 +461,7 @@ class Test(TestCase):
         print(f"Genes not on leafs: {len(genes_not_on_leaves_ids(go))}")
 
     def test_link_merge_prune_balance_pull_bp(self):
+        """Result: All genes with valid annotations are linked (36k)."""
         go = copy_dag(go_bp_main)
         print_dag_info(go)
         link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
@@ -467,3 +472,64 @@ class Test(TestCase):
         print(f"Genes not on leafs: {len(genes_not_on_leaves_ids(go))}")
         layers = create_layers(go)
         pass
+
+    def test_unannotated_leaves(self):
+        """Result: 36k gene-leaves, 20k term-leaves (57k leaves total)."""
+        go = copy_dag(go_main)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        leaf_ids = all_leaf_ids(go)
+        non_gene_leaf_ids = [term_id for term_id in leaf_ids if not isinstance(go[term_id], GeneTerm)]
+        gene_leaf_ids = [term_id for term_id in leaf_ids if isinstance(go[term_id], GeneTerm)]
+        pass
+
+    def test_remove_geneless_branches_bp(self):
+        """Result: Works :)"""
+        go = copy_dag(go_bp_main)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        print_dag_info(go)
+        remove_geneless_branches(go)
+        print_dag_info(go)
+
+    def test_full_cycle_bp(self):
+        go = copy_dag(go_bp_main)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        remove_geneless_branches(go)
+        merge_prune_until_convergence(go, 1, 10)
+        balance_until_convergence(go)
+        pull_leaves_down(go, len(go_bp_main))
+        layers = create_layers(go)
+        print_dag_info(go)
+        pass
+
+    def test_full_cycle_bp_dag_shape(self):
+        print("Original GO")
+        go = copy_dag(go_bp_main)
+        print_layers(create_layers(go))
+        print("Add genes")
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        print_layers(create_layers(go))
+        print("Remove geneless branches")
+        remove_geneless_branches(go)
+        print_layers(create_layers(go))
+        print("Merge prune")
+        merge_prune_until_convergence(go, 1, 10)
+        print_layers(create_layers(go))
+        print("Balance until convergence")
+        balance_until_convergence(go)
+        print_layers(create_layers(go))
+        print("Pull leaves down")
+        pull_leaves_down(go, len(go_bp_main))
+        print_layers(create_layers(go))
+
+    def test_alternative_ids(self):
+        """Result: keys() and values() are the same size, despite the presence of 2045 alt_ids.
+        So values just contains duplicates, and it doesn't matter which one you use."""
+        go = copy_dag(go_bp_main)
+        alt_ids = [alt_id for alt_id in go.keys() if is_alternative_id(go, alt_id)]
+        keys = go.keys()
+        values = go.values()
+
+    def test_create_layers2(self):
+        go = copy_dag(go_bp_main)
+        objs = create_layers(go)
+        ori = create_layers_deprecated(go)

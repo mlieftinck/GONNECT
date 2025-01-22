@@ -359,17 +359,21 @@ def link_genes_to_go_by_namespace(go: dict[str, GOTerm], goa_path: str, namespac
 
     relationships = has_relationships(go)
     print("\n----- START: Linking genes to GO-terms -----")
+    # Per annotation, a gene is added to the DAG and set as child of the annotated GO-terms
     linked_genes = -len(go.keys())
     for annotation in annotations.items():
         add_gene(go, annotation, relationships, namespace)
     linked_genes += len(go.keys())
-    print(f"Successfully linked {linked_genes}/{len(annotations.keys())} new {namespace} annotations.")
+    print(f"Successfully linked {linked_genes}/{len(annotations.keys())} = "
+          f"{linked_genes/len(annotations.keys())*100:.1f}% new {namespace} annotations.")
     print("----- COMPLETED: Linking genes to GO-terms -----")
 
 
 def add_gene(go: dict[str, GOTerm], annotation, relationships, namespace):
+    """Given an annotation of gene to GO-term(s), add a GeneTerm to the DAG, with the annotated GO-terms as parents."""
     gene_id, term_ids = annotation
     available_parents = {go[parent_id] for parent_id in term_ids if parent_id in go.keys()}
+    # If the gene was already added through a different namespace, the existing gene gets updated
     if gene_id in go.keys():
         for term in available_parents:
             go[gene_id].parents.add(term)
@@ -384,6 +388,42 @@ def add_gene(go: dict[str, GOTerm], annotation, relationships, namespace):
         update_level_and_depth(gene)
     else:
         print(f"Skipping {gene_id} as it has no parents in current DAG.")
+
+
+def remove_geneless_branches(go: dict[str, GOTerm]):
+    """Remove all branches that do not contain any genes. These branches are obsolete given the provided genes."""
+    print(f"\n----- START: Removing unannotated branches -----")
+    original_size = len(go.keys())
+    # Check for all current terms if there is at least one gene under the descendants
+    geneless_terms = []
+    for term_id in go.keys():
+        if isinstance(go[term_id], GeneTerm):
+            continue
+        # Skip alternative IDs to prevent double deletion leading to KeyErrors
+        if is_alternative_id(go, term_id):
+            continue
+        descendants = go[term_id].get_all_children()
+        geneless_subtree = True
+        for descendant in descendants:
+            if isinstance(go[descendant], GeneTerm):
+                geneless_subtree = False
+        if geneless_subtree:
+            geneless_terms.append(term_id)
+
+    # The terms without any genes in their subtree are removed
+    for term_id in geneless_terms:
+        for parent in go[term_id].parents:
+            parent.children.remove(go[term_id])
+        for child in go[term_id].children:
+            child.parents.remove(go[term_id])
+        # Remove alternative IDs together
+        for alt_id in go[term_id].alt_ids:
+            go.pop(alt_id)
+        go.pop(term_id)
+    print(
+        f"Removed {original_size - len(go.keys())}/{original_size} = "
+        f"{(original_size - len(go.keys())) / original_size * 100:.1f}% nodes")
+    print(f"----- COMPLETED: Removing unannotated branches -----")
 
 
 if __name__ == "__main__":

@@ -142,8 +142,9 @@ def print_dag_info(dag: dict[str, GOTerm]):
     print(f"Max depth: {max(term.depth for term in dag.values())}")
 
 
-def create_layers(dag: dict[str, GOTerm], root_id="GO:0000000"):
-    """Return a list of sorted collections of nodes with equal depth."""
+def create_layers_deprecated(dag: dict[str, GOTerm], root_id="GO:0000000"):
+    """Return a list of sorted collections of nodes with equal depth.
+    Deprecated: Only works for balanced DAGs (duplicates otherwise), unnecessarily complex."""
     layers = [[dag[root_id]]]
     next_layer = sorted(list(dag[root_id].children), key=lambda x: x.item_id)
     layers.append(next_layer)
@@ -156,6 +157,33 @@ def create_layers(dag: dict[str, GOTerm], root_id="GO:0000000"):
         layers.append(next_layer)
         prev_layer = next_layer.copy()
     return layers[:-1]
+
+
+def create_layers(dag: dict[str, GOTerm]):
+    """Returns a list of terms per depth level. NB: based on depth, not on edges.
+    Therefore, indicative but not representable for imbalanced graphs."""
+    layers = dict()
+    min_depth = 0
+    for term_id in dag.keys():
+        if dag[term_id].depth < min_depth:
+            min_depth = dag[term_id].depth
+        if dag[term_id].depth in layers.keys():
+            layers[dag[term_id].depth].add(dag[term_id])
+        else:
+            layers[dag[term_id].depth] = set()
+            layers[dag[term_id].depth].add(dag[term_id])
+
+    # Convert dictionary to list
+    layer_list = []
+    for i in range(len(layers.keys())):
+        layer_list.append(layers[min_depth + i])
+    return layer_list
+
+
+def print_layers(layers):
+    for i, layer in enumerate(layers):
+        non_proxies = [term for term in layer if not isinstance(term, ProxyTerm)]
+        print(f"{i + 1}. {len(non_proxies)}/{len(layer)}")
 
 
 def only_go_terms(dag: dict[str, GOTerm]):

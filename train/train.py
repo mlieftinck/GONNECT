@@ -57,7 +57,7 @@ if __name__ == "__main__":
     balance_until_convergence(go, root_id="A")
     pull_leaves_down(go, len(dag))
     print_dag_info(go)
-    layers = create_layers(go, root_id="A")
+    layers = create_layers(go)
     # Load data (samples, genes)
     data = TensorDataset(torch.randn(n_samples, len(layers[-1])))
 
