@@ -505,19 +505,19 @@ class Test(TestCase):
         print("Original GO")
         go = copy_dag(go_bp_main)
         print_layers(create_layers(go))
-        print("Add genes")
+
         link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
         print_layers(create_layers(go))
-        print("Remove geneless branches")
+
         remove_geneless_branches(go)
         print_layers(create_layers(go))
-        print("Merge prune")
+
         merge_prune_until_convergence(go, 1, 10)
         print_layers(create_layers(go))
-        print("Balance until convergence")
+
         balance_until_convergence(go)
         print_layers(create_layers(go))
-        print("Pull leaves down")
+
         pull_leaves_down(go, len(go_bp_main))
         print_layers(create_layers(go))
 
