@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 from data.GeneTerm import GeneTerm
 from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms, genes_not_on_leaves_ids, \
     print_layers, is_alternative_id, create_layers_deprecated
+from data.data_preprocessing import read_gene_ids, save_gene_matches
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
-    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace, remove_geneless_branches
+    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace, remove_geneless_branches, \
+    save_gene_ids
 from go_preprocessing import create_dag, copy_dag, filter_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
@@ -502,8 +504,9 @@ class Test(TestCase):
         pass
 
     def test_full_cycle_bp_dag_shape(self):
-        print("Original GO")
         go = copy_dag(go_bp_main)
+        print_dag_info(go)
+        print("Original GO")
         print_layers(create_layers(go))
 
         link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
@@ -520,6 +523,7 @@ class Test(TestCase):
 
         pull_leaves_down(go, len(go_bp_main))
         print_layers(create_layers(go))
+        print_dag_info(go)
 
     def test_alternative_ids(self):
         """Result: keys() and values() are the same size, despite the presence of 2045 alt_ids.
@@ -533,3 +537,16 @@ class Test(TestCase):
         go = copy_dag(go_bp_main)
         objs = create_layers(go)
         ori = create_layers_deprecated(go)
+
+    def test_save_gene_ids(self):
+        go = copy_dag(go_bp_main)
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
+        save_gene_ids(go, "../../GO_TCGA/gene_ids_in_go_bp_test.txt")
+
+    def test_link_genes_from_subset(self):
+        go = copy_dag(go_bp_main)
+        genes = read_gene_ids("../../GO_TCGA/gene_matches_bp.txt")
+        link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process", genes)
+        remove_geneless_branches(go)
+        print_dag_info(go)
+        pass

@@ -347,10 +347,10 @@ def encode_namespace(namespace: str):
     raise Exception(f"Invalid namespace: {namespace}")
 
 
-def link_genes_to_go_by_namespace(go: dict[str, GOTerm], goa_path: str, namespace):
+def link_genes_to_go_by_namespace(go: dict[str, GOTerm], goa_path: str, namespace: str, subset=None):
     """Given the path to a '.goa' annotation file, add annotated genes to DAG for given namespace.
     Gene might already be present under different namespace, in which case additional annotations
-    are added to the existing set of parent terms."""
+    are added to the existing set of parent terms. Option to only add the provided subset of genes."""
     print(f"\n----- START: Retrieving gene annotations for {namespace} -----")
     namespace_code = encode_namespace(namespace)
     gaf_reader = GafReader(goa_path)
@@ -362,10 +362,19 @@ def link_genes_to_go_by_namespace(go: dict[str, GOTerm], goa_path: str, namespac
     # Per annotation, a gene is added to the DAG and set as child of the annotated GO-terms
     linked_genes = -len(go.keys())
     for annotation in annotations.items():
-        add_gene(go, annotation, relationships, namespace)
+        if subset is not None:
+            if annotation[0] in subset:
+                add_gene(go, annotation, relationships, namespace)
+        else:
+            add_gene(go, annotation, relationships, namespace)
     linked_genes += len(go.keys())
-    print(f"Successfully linked {linked_genes}/{len(annotations.keys())} = "
-          f"{linked_genes/len(annotations.keys())*100:.1f}% new {namespace} annotations.")
+    if subset is not None:
+        gene_list = subset
+        print("Only a subset of available namespace annotations is being used.")
+    else:
+        gene_list = annotations.keys()
+    print(f"Successfully linked {linked_genes}/{len(gene_list)} = "
+          f"{linked_genes/len(gene_list)*100:.1f}% new {namespace} annotations.")
     print("----- COMPLETED: Linking genes to GO-terms -----")
 
 
@@ -424,6 +433,11 @@ def remove_geneless_branches(go: dict[str, GOTerm]):
         f"Removed {original_size - len(go.keys())}/{original_size} = "
         f"{(original_size - len(go.keys())) / original_size * 100:.1f}% nodes")
     print(f"----- COMPLETED: Removing unannotated branches -----")
+
+def save_gene_ids(go: dict[str, GOTerm], path: str):
+    gene_ids = [term.item_id for term in go.values() if isinstance(term, GeneTerm)]
+    with open(path, "w") as f:
+        f.write("\n".join(gene_ids))
 
 
 if __name__ == "__main__":
