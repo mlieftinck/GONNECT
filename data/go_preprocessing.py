@@ -1,8 +1,6 @@
 from goatools.anno.gaf_reader import GafReader
 from goatools.obo_parser import *
 import time
-
-from data.GeneTerm import GeneTerm
 from data.dag_analysis import *
 from data.ProxyTerm import ProxyTerm
 
@@ -167,7 +165,7 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
     merged_term_ids = []
     term_ids = go.keys()
     # Debug:
-    removed_terms = []
+    # removed_terms = []
     for term_id in term_ids:
         term = go[term_id]
 
@@ -181,7 +179,8 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         if (len(children) > 0) and (len(parents) > 0):
             if (len(parents) <= threshold_parents) & (len(children) <= threshold_children):
                 # Debug:
-                removed_terms.append(term_id)
+                # removed_terms.append(term_id)
+
                 # Update parent-child relations
                 for parent in parents:
                     parent.children.remove(term)
@@ -203,7 +202,10 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         go.pop(merged_id)
 
     # print(f"Merge events: {merge_events}")
-    return merge_events, removed_terms
+
+    # Debug:
+    # return merge_events, removed_terms
+    return merge_events
 
 
 def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, threshold_children=1):
@@ -212,14 +214,18 @@ def merge_prune_until_convergence(go: dict[str, GOTerm], threshold_parents=1, th
     pruning_events, merge_events = 1, 1
     original_go_size = len(go)
     # Debug:
-    removed_terms = []
+    # removed_terms = []
     while merge_events + pruning_events > 0:
-        merge_events, removed = merge_chains(go, threshold_parents, threshold_children)
+        # Debug:
+        # merge_events, removed = merge_chains(go, threshold_parents, threshold_children)
+        merge_events = merge_chains(go, threshold_parents, threshold_children)
         pruning_events = prune_skip_connections(go)
-        removed_terms += removed
+        # Debug:
+        # removed_terms += removed
     print(f"Remaining nodes: {len(go)}/{original_go_size}")
     print("----- COMPLETED: Merge-Prune until convergence -----")
-    return removed_terms
+    # Debug:
+    # return removed_terms
 
 
 def update_level_and_depth(term: GOTerm):
@@ -374,7 +380,7 @@ def link_genes_to_go_by_namespace(go: dict[str, GOTerm], goa_path: str, namespac
     else:
         gene_list = annotations.keys()
     print(f"Successfully linked {linked_genes}/{len(gene_list)} = "
-          f"{linked_genes/len(gene_list)*100:.1f}% new {namespace} annotations.")
+          f"{linked_genes / len(gene_list) * 100:.1f}% new {namespace} annotations.")
     print("----- COMPLETED: Linking genes to GO-terms -----")
 
 
@@ -433,6 +439,7 @@ def remove_geneless_branches(go: dict[str, GOTerm]):
         f"Removed {original_size - len(go.keys())}/{original_size} = "
         f"{(original_size - len(go.keys())) / original_size * 100:.1f}% nodes")
     print(f"----- COMPLETED: Removing unannotated branches -----")
+
 
 def save_gene_ids(go: dict[str, GOTerm], path: str):
     gene_ids = [term.item_id for term in go.values() if isinstance(term, GeneTerm)]

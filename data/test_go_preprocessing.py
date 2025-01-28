@@ -2,15 +2,13 @@ from unittest import TestCase
 from goatools.obo_parser import GODag
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-
 from data.GeneTerm import GeneTerm
-from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, only_go_terms, genes_not_on_leaves_ids, \
+from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, genes_not_on_leaves_ids, \
     print_layers, is_alternative_id, create_layers_deprecated
-from data.data_preprocessing import read_gene_ids, save_gene_matches
+from data.data_preprocessing import read_gene_ids
 from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
-    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace, remove_geneless_branches, \
-    save_gene_ids
+    merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace, remove_geneless_branches
 from go_preprocessing import create_dag, copy_dag, filter_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
@@ -388,61 +386,62 @@ class Test(TestCase):
             plt.show()
 
     def test_debug_merge_rel(self):
-        """Out of 1081 merges in rel not in isa, 1060 were Case 1. The other 21 remain unidentified."""
-        go_ref = copy_dag(go_main)
-        go_rel_ref = copy_dag(go_rel_main)
-        go = copy_dag(go_main)
-        go_rel = copy_dag(go_rel_main)
-        go_merge1 = copy_dag(go_main)
-        go_rel_merge1 = copy_dag(go_rel_main)
-        go_prune = copy_dag(go_main)
-        go_rel_prune = copy_dag(go_rel_main)
-        go_merge2 = copy_dag(go_main)
-        go_rel_merge2 = copy_dag(go_rel_main)
-
-        # All merge iterations, commented out for faster debugging
-        removed_terms_converged = merge_prune_until_convergence(go, 1, 1)
-        removed_terms_rel_converged = merge_prune_until_convergence(go_rel, 1, 1)
-        # iteration_difference_converged = []
-        # for i in range(len(removed_terms_converged)):
-        #     iteration_difference_converged.append(list(set(removed_terms_converged[i])-set(removed_terms_rel_converged[i])))
-
-        _, removed_terms1 = merge_chains(go_merge1, 1, 1)
-        _, removed_terms_rel1 = merge_chains(go_rel_merge1, 1, 1)
-
-        merge_chains(go_prune, 1, 1)
-        prune_skip_connections(go_prune)
-        merge_chains(go_rel_prune, 1, 1)
-        prune_skip_connections(go_rel_prune)
-
-        merge_chains(go_merge2, 1, 1)
-        prune_skip_connections(go_merge2)
-        _, removed_terms2 = merge_chains(go_merge2, 1, 1)
-        merge_chains(go_rel_merge2, 1, 1)
-        prune_skip_connections(go_rel_merge2)
-        _, removed_terms_rel2 = merge_chains(go_rel_merge2, 1, 1)
-
-        overlap_merge1 = list(set(removed_terms1).intersection(set(removed_terms_rel1)))
-        difference_isa_rel_merge1 = list(set(removed_terms1) - set(removed_terms_rel1))
-        difference_rel_isa_merge1 = list(set(removed_terms_rel1) - set(removed_terms1))
-        difference_rel_isa_converged = list(set(removed_terms_rel_converged) - set(removed_terms_converged))
-
-        # overlap_m1 = [go_rel_main_parentless[x] for x in overlap_merge1]
-        # diff_i_r_m1 = [go_rel_main_parentless[x] for x in difference_isa_rel_merge1]
-        # diff_r_i_m1 = [go_rel_main_parentless[x] for x in difference_rel_isa_merge1]
-        diff_r_i_conv = [go_rel_main_parentless[x] for x in difference_rel_isa_converged]
-
-        # Terms that are removed in rel, but not in isa:
-        # Are they all examples of Case 1? (leaf in isa, not in rel) -> Yes
-        case_1 = []
-        other = []
-        for i, term_id in enumerate(difference_rel_isa_converged):
-            if len(go_ref[term_id].children) == 0:
-                if len(go_rel_ref[term_id].children) > 0:
-                    case_1.append(diff_r_i_conv[i])
-                    continue
-            other.append(diff_r_i_conv[i])
-        pass
+        """Out of 1081 merges in rel not in isa, 1060 were Case 1. The other 21 remain unidentified.
+        To work, the 'Debug:' lines in merge_chains() and merge_prune_until_convergence() must be uncommented."""
+        # go_ref = copy_dag(go_main)
+        # go_rel_ref = copy_dag(go_rel_main)
+        # go = copy_dag(go_main)
+        # go_rel = copy_dag(go_rel_main)
+        # go_merge1 = copy_dag(go_main)
+        # go_rel_merge1 = copy_dag(go_rel_main)
+        # go_prune = copy_dag(go_main)
+        # go_rel_prune = copy_dag(go_rel_main)
+        # go_merge2 = copy_dag(go_main)
+        # go_rel_merge2 = copy_dag(go_rel_main)
+        #
+        # # All merge iterations, commented out for faster debugging
+        # removed_terms_converged = merge_prune_until_convergence(go, 1, 1)
+        # removed_terms_rel_converged = merge_prune_until_convergence(go_rel, 1, 1)
+        # # iteration_difference_converged = []
+        # # for i in range(len(removed_terms_converged)):
+        # #     iteration_difference_converged.append(list(set(removed_terms_converged[i])-set(removed_terms_rel_converged[i])))
+        #
+        # _, removed_terms1 = merge_chains(go_merge1, 1, 1)
+        # _, removed_terms_rel1 = merge_chains(go_rel_merge1, 1, 1)
+        #
+        # merge_chains(go_prune, 1, 1)
+        # prune_skip_connections(go_prune)
+        # merge_chains(go_rel_prune, 1, 1)
+        # prune_skip_connections(go_rel_prune)
+        #
+        # merge_chains(go_merge2, 1, 1)
+        # prune_skip_connections(go_merge2)
+        # _, removed_terms2 = merge_chains(go_merge2, 1, 1)
+        # merge_chains(go_rel_merge2, 1, 1)
+        # prune_skip_connections(go_rel_merge2)
+        # _, removed_terms_rel2 = merge_chains(go_rel_merge2, 1, 1)
+        #
+        # overlap_merge1 = list(set(removed_terms1).intersection(set(removed_terms_rel1)))
+        # difference_isa_rel_merge1 = list(set(removed_terms1) - set(removed_terms_rel1))
+        # difference_rel_isa_merge1 = list(set(removed_terms_rel1) - set(removed_terms1))
+        # difference_rel_isa_converged = list(set(removed_terms_rel_converged) - set(removed_terms_converged))
+        #
+        # # overlap_m1 = [go_rel_main_parentless[x] for x in overlap_merge1]
+        # # diff_i_r_m1 = [go_rel_main_parentless[x] for x in difference_isa_rel_merge1]
+        # # diff_r_i_m1 = [go_rel_main_parentless[x] for x in difference_rel_isa_merge1]
+        # diff_r_i_conv = [go_rel_main_parentless[x] for x in difference_rel_isa_converged]
+        #
+        # # Terms that are removed in rel, but not in isa:
+        # # Are they all examples of Case 1? (leaf in isa, not in rel) -> Yes
+        # case_1 = []
+        # other = []
+        # for i, term_id in enumerate(difference_rel_isa_converged):
+        #     if len(go_ref[term_id].children) == 0:
+        #         if len(go_rel_ref[term_id].children) > 0:
+        #             case_1.append(diff_r_i_conv[i])
+        #             continue
+        #     other.append(diff_r_i_conv[i])
+        # pass
 
     def test_link_genes_bp(self):
         """Result: Three genes not linked because their annotated GO terms are obsolete."""
@@ -541,7 +540,7 @@ class Test(TestCase):
     def test_save_gene_ids(self):
         go = copy_dag(go_bp_main)
         link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process")
-        save_gene_ids(go, "../../GO_TCGA/gene_ids_in_go_bp_test.txt")
+        # save_gene_ids(go, "../../GO_TCGA/gene_ids_in_go_bp_test.txt")
 
     def test_link_genes_from_subset(self):
         go = copy_dag(go_bp_main)
