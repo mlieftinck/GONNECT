@@ -165,8 +165,10 @@ def create_layers(dag: dict[str, GOTerm]):
     layers = dict()
     min_depth = 0
     for term_id in dag.keys():
+        # Store minimal depth for sorting layers by depth
         if dag[term_id].depth < min_depth:
             min_depth = dag[term_id].depth
+        # Add terms to corresponding depth key
         if dag[term_id].depth in layers.keys():
             layers[dag[term_id].depth].add(dag[term_id])
         else:
@@ -176,7 +178,10 @@ def create_layers(dag: dict[str, GOTerm]):
     # Convert dictionary to list
     layer_list = []
     for i in range(len(layers.keys())):
-        layer_list.append(layers[min_depth + i])
+        # Sort layers by depth, and terms in layer by ID
+        layer = layers[min_depth + i]
+        sorted_layer = sorted(list(layer), key=lambda x: x.item_id)
+        layer_list.append(sorted_layer)
     return layer_list
 
 

@@ -1,24 +1,22 @@
 import torch
 import torch.nn as nn
+
 from data.ProxyTerm import ProxyTerm
 
 
-class BIEncoder(nn.Module):
+class Encoder(nn.Module):
     def __init__(self, go_layers):
-        super(BIEncoder, self).__init__()
-        go_layers = list(reversed(go_layers))
-
-        # Initialize biologically-informed masks
-        self.proxy_masks = self._create_proxy_masks(go_layers)
-        self.edge_masks = self._create_edge_masks(go_layers)
+        super(Encoder, self).__init__()
 
         # Initialize architecture
+        self.go_layers = list(reversed(go_layers))
         network_layers = []
-        self.relu = nn.ReLU()
-        for i in range(len(go_layers) - 1):
-            network_layers.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
-            if i < len(go_layers) - 2:
-                network_layers.append(self.relu)
+        self.activation = nn.ReLU()
+        for i in range(len(self.go_layers) - 1):
+            network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1])))
+            if i < len(self.go_layers) - 2:
+                network_layers.append(self.activation)
+            # Final layer has no activation
         self.layers = nn.ModuleList(network_layers)
 
         # Initialize all weights
@@ -26,13 +24,28 @@ class BIEncoder(nn.Module):
             if isinstance(layer, nn.Linear):
                 nn.init.kaiming_normal_(layer.weight)
 
-        # Mask weights using proxy and edge masks
-        self.mask_weights()
-
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
         return x
+
+    def mask_weights(self):
+        return
+
+    def mask_gradients(self):
+        return
+
+
+class BIEncoder(Encoder):
+    def __init__(self, go_layers):
+        super(BIEncoder, self).__init__(go_layers)
+
+        # Initialize biologically-informed masks
+        self.proxy_masks = self._create_proxy_masks()
+        self.edge_masks = self._create_edge_masks()
+
+        # Mask weights using proxy and edge masks
+        self.mask_weights()
 
     def mask_weights(self):
         # Mask weights using proxy and edge masks
@@ -58,11 +71,10 @@ class BIEncoder(nn.Module):
                 layer.weight.grad = torch.masked_fill(layer.weight.grad, self.edge_masks[mask_index] == 0, value=0)
                 mask_index += 1
 
-    @staticmethod
-    def _create_proxy_masks(go_layers):
+    def _create_proxy_masks(self):
         proxy_masks = []
-        for n in range(len(go_layers) - 1):
-            next_layer = go_layers[n + 1]
+        for n in range(len(self.go_layers) - 1):
+            next_layer = self.go_layers[n + 1]
             proxy_mask = torch.zeros(len(next_layer), 1, dtype=torch.bool)
             for i in range(len(next_layer)):
                 if isinstance(next_layer[i], ProxyTerm):
@@ -70,12 +82,11 @@ class BIEncoder(nn.Module):
             proxy_masks.append(proxy_mask)
         return proxy_masks
 
-    @staticmethod
-    def _create_edge_masks(go_layers):
+    def _create_edge_masks(self):
         edge_masks = []
-        for n in range(len(go_layers) - 1):
-            current_layer = go_layers[n]
-            next_layer = go_layers[n + 1]
+        for n in range(len(self.go_layers) - 1):
+            current_layer = self.go_layers[n]
+            next_layer = self.go_layers[n + 1]
             edge_mask = torch.zeros(len(next_layer), len(current_layer), dtype=torch.bool)
 
             for i in range(len(current_layer)):
@@ -85,35 +96,5 @@ class BIEncoder(nn.Module):
                 for j in range(len(next_layer)):
                     if next_layer_ids[j] in parent_ids:
                         edge_mask[j][i] = 1
-
             edge_masks.append(edge_mask)
         return edge_masks
-
-
-class Decoder(nn.Module):
-    def __init__(self, go_layers):
-        super(Decoder, self).__init__()
-        self.layers = []
-        self.relu = nn.ReLU()
-        for i in range(len(go_layers) - 1):
-            self.layers.append(nn.Linear(len(go_layers[i]), len(go_layers[i + 1])))
-            if i < len(go_layers) - 2:
-                self.layers.append(self.relu)
-            else:
-                self.layers.append(nn.Sigmoid())
-        self.layers = nn.Sequential(*self.layers)
-
-    def forward(self, z):
-        return self.layers(z)
-
-
-class Autoencoder(nn.Module):
-    def __init__(self, go_layers):
-        super(Autoencoder, self).__init__()
-        self.encoder = BIEncoder(go_layers)
-        self.decoder = Decoder(go_layers)
-
-    def forward(self, x):
-        z = self.encoder(x)
-        y = self.decoder(z)
-        return y
