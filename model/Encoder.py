@@ -13,7 +13,7 @@ class Encoder(nn.Module):
         network_layers = []
         self.activation = nn.ReLU()
         for i in range(len(self.go_layers) - 1):
-            network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1])))
+            network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1]), dtype=torch.float64))
             if i < len(self.go_layers) - 2:
                 network_layers.append(self.activation)
             # Final layer has no activation

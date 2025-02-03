@@ -447,6 +447,13 @@ def save_gene_ids(go: dict[str, GOTerm], path: str):
         f.write("\n".join(gene_ids))
 
 
+def remove_superroot(go: dict[str, GOTerm]):
+    superroot = go["GO:0000000"]
+    for child in superroot.children:
+        child.parents.remove(superroot)
+    go.pop(superroot.item_id)
+
+
 if __name__ == "__main__":
     """OBSOLETE: Moved to test_go_preprocessing.py"""
     t_start = time.time()
