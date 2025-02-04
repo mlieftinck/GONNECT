@@ -1,4 +1,3 @@
-from tqdm import tqdm
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optimizer
@@ -74,7 +73,7 @@ if __name__ == "__main__":
     layers = create_layers(go)
 
     # Load data (samples, genes)
-    data = TensorDataset(torch.randn(n_samples, len(layers[-1])))
+    data = TensorDataset(torch.randn(n_samples, len(layers[-1]), dtype=torch.float64))
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=False)
 
@@ -85,7 +84,6 @@ if __name__ == "__main__":
     # Set the number of epochs to for training
     epochs = n_epochs
     epoch_losses = []
-    # for epoch in tqdm(range(epochs)):  # loop over the dataset multiple times
     print_first_layer_weights(model)
     for epoch in range(epochs):  # loop over the dataset multiple times
         train_loss = train(dataloader, model, optimizer, loss_fn="broodrooster")
