@@ -1,10 +1,10 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-import torch.optim as optimizer
+import torch.optim as optim
 import torch.nn.functional as F
 from data.go_preprocessing import *
 from data.DAGGenerator import DAGGenerator
-from model.Encoder import Encoder, BIEncoder
+from model.Encoder import Encoder, BIEncoder, SparseEncoder
 from model.Decoder import Decoder, BIDecoder
 from model.Autoencoder import Autoencoder
 
@@ -47,6 +47,7 @@ def train(train_loader, net, optimizer, loss_fn=""):
         if isinstance(net.encoder, BIEncoder):
             net.encoder.mask_gradients()
 
+        test = net.encoder.layers[0]
         optimizer.step()
 
         # Force weights (Options 2)
@@ -73,15 +74,15 @@ if __name__ == "__main__":
     layers = create_layers(go)
 
     # Load data (samples, genes)
-    data = TensorDataset(torch.randn(n_samples, len(layers[-1]), dtype=torch.float64))
+    data = TensorDataset(torch.randn(n_samples, len(layers[-1]), dtype=torch.float32))
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=False)
 
-    model = Autoencoder(BIEncoder(layers), Decoder(layers))
+    model = Autoencoder(SparseEncoder(layers, dtype=torch.float32, protocol="coo"), Decoder(layers))
 
-    optimizer = optimizer.Adam(model.parameters(), lr=5e-3)
+    optimizer = optim.SGD(model.parameters(), lr=5e-3)
 
-    # Set the number of epochs to for training
+    # Set the number of epochs for training
     epochs = n_epochs
     epoch_losses = []
     print_first_layer_weights(model)

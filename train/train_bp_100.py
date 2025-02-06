@@ -15,6 +15,7 @@ if __name__ == "__main__":
     n_samples = data.shape[1] - n_nan_cols
     batch_size = 200
     n_epochs = 100
+    dtype = torch.float64
 
     # Initialize GO DAG
     go_main = create_dag("../data/go-basic.obo")
@@ -47,9 +48,9 @@ if __name__ == "__main__":
     dataloader = DataLoader(torch_dataset, batch_size=batch_size, shuffle=False)
 
     # Construct model(s)
-    model = Autoencoder(BIEncoder(layers), Decoder(layers))
+    model = Autoencoder(BIEncoder(layers, dtype), Decoder(layers, dtype))
     optimizer = optim.Adam(model.parameters(), lr=1e-5)
-    model_vanilla = Autoencoder(Encoder(layers), Decoder(layers))
+    model_vanilla = Autoencoder(Encoder(layers, dtype), Decoder(layers, dtype))
     optimizer_vanilla = optim.Adam(model_vanilla.parameters(), lr=1e-5)
 
     # Set the number of epochs to for training

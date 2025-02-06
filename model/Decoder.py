@@ -4,7 +4,7 @@ from data.ProxyTerm import ProxyTerm
 
 
 class Decoder(nn.Module):
-    def __init__(self, go_layers):
+    def __init__(self, go_layers, dtype):
         super(Decoder, self).__init__()
 
         # Initialize architecture
@@ -12,7 +12,7 @@ class Decoder(nn.Module):
         network_layers = []
         self.activation = nn.ReLU()
         for i in range(len(self.go_layers) - 1):
-            network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1]), dtype=torch.float64))
+            network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1]), dtype=dtype))
             if i < len(self.go_layers) - 2:
                 network_layers.append(self.activation)
             else:
@@ -39,7 +39,7 @@ class Decoder(nn.Module):
 
 class BIDecoder(Decoder):
     def __init__(self, go_layers):
-        super(BIDecoder, self).__init__(go_layers)
+        super(BIDecoder, self).__init__(go_layers, dtype)
 
         # Initialize biologically-informed masks
         self.proxy_masks = self._create_proxy_masks()
