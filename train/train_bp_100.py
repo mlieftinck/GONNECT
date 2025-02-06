@@ -13,33 +13,13 @@ if __name__ == "__main__":
     n_nan_cols = 3
     genes = list(data["gene id"])
     n_samples = data.shape[1] - n_nan_cols
-    batch_size = 200
-    n_epochs = 100
+    batch_size = 20
+    n_epochs = 10
     dtype = torch.float64
 
-    # Initialize GO DAG
-    go_main = create_dag("../data/go-basic.obo")
-    go_bp = filter_by_namespace(go_main, {"biological_process"})
-    go = copy_dag(go_bp)
-    # Process GO DAG
-    # Add genes
-    link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process", genes)
-    print_layers(create_layers(go))
-    remove_geneless_branches(go)
-    print_layers(create_layers(go))
-    # Merge-prune
-    merge_prune_until_convergence(go, 1, 10)
-    print_layers(create_layers(go))
-    # Add proxies
-    go_proxyless = copy_dag(go)
-    balance_until_convergence(go)
-    pull_leaves_down(go, len(go_proxyless))
-    print_layers(create_layers(go))
-    # Remove superroot
-    remove_superroot(go)
-    # Layerize DAG
-    print_dag_info(go)
-    layers = create_layers(go)
+    # Initialize GO layers, prune the top off
+    layers = construct_go_bp_layers(genes)
+    layers = layers[2:]
 
     # Convert dataset from pandas to torch
     data_np = data.iloc[:, n_nan_cols:].to_numpy()

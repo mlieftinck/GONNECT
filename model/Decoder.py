@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from data.ProxyTerm import ProxyTerm
+from model.SparseLinear import SparseLinear
 
 
 class Decoder(nn.Module):
@@ -96,6 +97,61 @@ class BIDecoder(Decoder):
                 next_layer_ids = [term.item_id for term in next_layer]
                 for j in range(len(next_layer)):
                     if next_layer_ids[j] in child_ids:
+                        edge_mask[j][i] = 1
+            edge_masks.append(edge_mask)
+        return edge_masks
+
+class SparseDecoder(nn.Module):
+    def __init__(self, go_layers, dtype, protocol="coo"):
+        super(SparseDecoder, self).__init__()
+        self.go_layers = go_layers
+        self.protocol = protocol
+
+        # Initialize masks
+        self.proxy_masks = self._create_proxy_masks()
+        self.edge_masks = self._create_edge_masks()
+
+        # Initialize architecture
+        network_layers = []
+        self.activation = nn.ReLU()
+        for i in range(len(self.go_layers) - 1):
+            network_layers.append(
+                SparseLinear(len(self.go_layers[i]), len(self.go_layers[i + 1]), self.edge_masks[i], dtype=dtype,
+                             protocol=self.protocol))
+            if i < len(self.go_layers) - 2:
+                network_layers.append(self.activation)
+            # Final layer has no activation
+        self.layers = nn.ModuleList(network_layers)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+    def _create_proxy_masks(self):
+        proxy_masks = []
+        for n in range(len(self.go_layers) - 1):
+            next_layer = self.go_layers[n + 1]
+            proxy_mask = torch.zeros(len(next_layer), 1, dtype=torch.bool)
+            for i in range(len(next_layer)):
+                if isinstance(next_layer[i], ProxyTerm):
+                    proxy_mask[i] = 1
+            proxy_masks.append(proxy_mask)
+        return proxy_masks
+
+    def _create_edge_masks(self):
+        edge_masks = []
+        for n in range(len(self.go_layers) - 1):
+            current_layer = self.go_layers[n]
+            next_layer = self.go_layers[n + 1]
+            edge_mask = torch.zeros(len(next_layer), len(current_layer), dtype=torch.bool)
+
+            for i in range(len(current_layer)):
+                child = current_layer[i]
+                parent_ids = [parent.item_id for parent in child.parents]
+                next_layer_ids = [term.item_id for term in next_layer]
+                for j in range(len(next_layer)):
+                    if next_layer_ids[j] in parent_ids:
                         edge_mask[j][i] = 1
             edge_masks.append(edge_mask)
         return edge_masks

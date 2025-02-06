@@ -5,16 +5,12 @@ import torch.nn.functional as F
 from data.go_preprocessing import *
 from data.DAGGenerator import DAGGenerator
 from model.Encoder import Encoder, BIEncoder, SparseEncoder
-from model.Decoder import Decoder, BIDecoder
+from model.Decoder import Decoder, BIDecoder, SparseDecoder
 from model.Autoencoder import Autoencoder
 
 
 def loss_kl_divergence(inputs, outputs, net):
     return ((inputs - outputs) ** 2).sum() + net.encoder.kl
-
-
-def print_first_layer_weights(net):
-    print(net.encoder.layers[0].weight)
 
 
 def train(train_loader, net, optimizer, loss_fn=""):
@@ -64,6 +60,7 @@ if __name__ == "__main__":
     n_samples = 1000
     batch_size = 10
     n_epochs = 10
+    dtype=torch.float32
 
     # DAG to layers
     dag = DAGGenerator.dag4()
@@ -74,24 +71,22 @@ if __name__ == "__main__":
     layers = create_layers(go)
 
     # Load data (samples, genes)
-    data = TensorDataset(torch.randn(n_samples, len(layers[-1]), dtype=torch.float32))
+    data = TensorDataset(torch.randn(n_samples, len(layers[-1]), dtype=dtype))
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=False)
 
-    model = Autoencoder(SparseEncoder(layers, dtype=torch.float32, protocol="coo"), Decoder(layers))
+    model = Autoencoder(SparseEncoder(layers, dtype=dtype), SparseDecoder(layers, dtype=dtype))
 
     optimizer = optim.SGD(model.parameters(), lr=5e-3)
 
     # Set the number of epochs for training
     epochs = n_epochs
     epoch_losses = []
-    print_first_layer_weights(model)
     for epoch in range(epochs):  # loop over the dataset multiple times
         train_loss = train(dataloader, model, optimizer, loss_fn="broodrooster")
         epoch_losses.append(train_loss.item())
         print(f"Training loss after epoch {epoch + 1}: {train_loss}")
 
-    print_first_layer_weights(model)
     plt.plot(epoch_losses)
     plt.show()
     pass

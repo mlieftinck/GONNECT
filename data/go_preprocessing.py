@@ -454,6 +454,35 @@ def remove_superroot(go: dict[str, GOTerm]):
     go.pop(superroot.item_id)
 
 
+def construct_go_bp_layers(genes, merge_conditions=(1, 10), print=False):
+    # Initialize GO DAG
+    go_main = create_dag("../data/go-basic.obo")
+    go_bp = filter_by_namespace(go_main, {"biological_process"})
+    go = copy_dag(go_bp)
+    # Process GO DAG
+    # Add genes
+    link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process", genes)
+    if print:
+        print_layers(create_layers(go))
+    remove_geneless_branches(go)
+    if print:
+        print_layers(create_layers(go))
+    # Merge-prune
+    merge_prune_until_convergence(go, merge_conditions[0], merge_conditions[1])
+    if print:
+        print_layers(create_layers(go))
+    # Add proxies
+    go_proxyless = copy_dag(go)
+    balance_until_convergence(go)
+    pull_leaves_down(go, len(go_proxyless))
+    if print:
+        print_layers(create_layers(go))
+    # Layerize DAG
+    if print:
+        print_dag_info(go)
+    return create_layers(go)
+
+
 if __name__ == "__main__":
     """OBSOLETE: Moved to test_go_preprocessing.py"""
     t_start = time.time()
