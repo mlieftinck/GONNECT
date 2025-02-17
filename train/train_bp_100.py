@@ -37,10 +37,10 @@ if __name__ == "__main__":
     epoch_losses = []
     epoch_losses_vanilla = []
     for epoch in range(epochs):  # loop over the dataset multiple times
-        train_loss = train(dataloader, model, optimizer, loss_fn="broodrooster")
+        train_loss = train(dataloader, model, optimizer)
         epoch_losses.append(train_loss.item())
         print(f"Training loss after epoch {epoch + 1}: {train_loss}")
-        train_loss_vanilla = train(dataloader, model_vanilla, optimizer_vanilla, loss_fn="broodrooster")
+        train_loss_vanilla = train(dataloader, model_vanilla, optimizer_vanilla)
         epoch_losses_vanilla.append(train_loss_vanilla.item())
 
     plt.plot(epoch_losses)
