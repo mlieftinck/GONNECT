@@ -23,7 +23,6 @@ if __name__ == "__main__":
 
     # Convert dataset from pandas to torch
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
-    test = np.transpose(data_np)
     torch_dataset = TensorDataset(torch.from_numpy(np.transpose(data_np)))
     dataloader = DataLoader(torch_dataset, batch_size=batch_size, shuffle=False)
 
@@ -37,7 +36,6 @@ if __name__ == "__main__":
     epochs = n_epochs
     epoch_losses = []
     epoch_losses_vanilla = []
-    # for epoch in tqdm(range(epochs)):  # loop over the dataset multiple times
     for epoch in range(epochs):  # loop over the dataset multiple times
         train_loss = train(dataloader, model, optimizer, loss_fn="broodrooster")
         epoch_losses.append(train_loss.item())
@@ -47,5 +45,5 @@ if __name__ == "__main__":
 
     plt.plot(epoch_losses)
     plt.plot(epoch_losses_vanilla)
-    plt.legend(["Training loss BI", "Training loss vanilla"])
+    plt.legend(["Training loss BI", "Training loss FC"])
     plt.show()
