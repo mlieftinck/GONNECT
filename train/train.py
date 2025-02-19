@@ -13,7 +13,7 @@ def loss_kl_divergence(inputs, outputs, net):
     return ((inputs - outputs) ** 2).sum() + net.encoder.kl
 
 
-def train(train_loader, net, optimizer, loss_fn=""):
+def train(train_loader, net, optimizer, loss_fn=F.mse_loss):
     """Trains variational autoencoder network for one epoch in batches.
     Args:
         train_loader: Data loader for training set.
@@ -36,14 +36,13 @@ def train(train_loader, net, optimizer, loss_fn=""):
         if loss_fn == "kl":
             loss = loss_kl_divergence(inputs, outputs, net)
         else:
-            loss = F.mse_loss(outputs, inputs)
+            loss = loss_fn(outputs, inputs)
         loss.backward()
 
         # Force gradients (Option 1)
         if isinstance(net.encoder, BIEncoder):
             net.encoder.mask_gradients()
 
-        test = net.encoder.layers[0]
         optimizer.step()
 
         # Force weights (Options 2)
@@ -75,7 +74,7 @@ if __name__ == "__main__":
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=False)
 
-    model = Autoencoder(SparseEncoder(layers, dtype=dtype), SparseDecoder(layers, dtype=dtype))
+    model = Autoencoder(SparseEncoder(layers, dtype=dtype), Decoder(layers, dtype=dtype))
 
     optimizer = optim.SGD(model.parameters(), lr=5e-3)
 
@@ -83,7 +82,7 @@ if __name__ == "__main__":
     epochs = n_epochs
     epoch_losses = []
     for epoch in range(epochs):  # loop over the dataset multiple times
-        train_loss = train(dataloader, model, optimizer, loss_fn="broodrooster")
+        train_loss = train(dataloader, model, optimizer)
         epoch_losses.append(train_loss.item())
         print(f"Training loss after epoch {epoch + 1}: {train_loss}")
 

@@ -5,21 +5,38 @@ import pandas as pd
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
 from model.Decoder import Decoder
-from model.Encoder import BIEncoder, Encoder
+from model.Encoder import BIEncoder, Encoder, SparseEncoder
 from train import train
 
 if __name__ == "__main__":
+    go_preprocessing = False
     data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip')
     n_nan_cols = 3
     genes = list(data["gene id"])
+    merge_conditions = (1, 10)
     n_samples = data.shape[1] - n_nan_cols
     batch_size = 20
     n_epochs = 10
     dtype = torch.float64
-
-    # Initialize GO layers, prune the top off
-    layers = construct_go_bp_layers(genes)
-    layers = layers[2:]
+    lr_bi, lr_fc = 1e-3, 1e-3
+    if go_preprocessing:
+        print("\n----- START: GO preprocessing -----")
+        # Initialize GO layers, prune the top off
+        layers = construct_go_bp_layers(genes, merge_conditions, print=True)
+        layers = layers[2:]
+        print([len(layer) for layer in layers])
+        masks = None
+        print("----- COMPLETED: GO preprocessing -----")
+        # layer_copy = [torch.zeros(len(layer)) for layer in layers]
+        # torch.save(layer_copy, f"../masks/{str(merge_conditions)}/bp_100_layers.pt")
+        # print("----- Saved layers to file -----")
+    else:
+        print("\n----- START: Loading GO from file -----")
+        layers = torch.load(f"../masks/{str(merge_conditions)}/bp_100_layers.pt", weights_only=True)
+        mask_edge = torch.load(f"../masks/{str(merge_conditions)}/bp_100_sparse_edge_masks.pt", weights_only=True)
+        mask_proxy = torch.load(f"../masks/{str(merge_conditions)}/bp_100_sparse_proxy_masks.pt", weights_only=True)
+        masks = (mask_edge, mask_proxy)
+        print("----- COMPLETED: Loading GO from file -----")
 
     # Convert dataset from pandas to torch
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
@@ -27,10 +44,10 @@ if __name__ == "__main__":
     dataloader = DataLoader(torch_dataset, batch_size=batch_size, shuffle=False)
 
     # Construct model(s)
-    model = Autoencoder(BIEncoder(layers, dtype), Decoder(layers, dtype))
-    optimizer = optim.Adam(model.parameters(), lr=1e-5)
+    model = Autoencoder(SparseEncoder(layers, dtype, masks=masks), Decoder(layers, dtype))
+    optimizer = optim.SGD(model.parameters(), lr=lr_bi)
     model_vanilla = Autoencoder(Encoder(layers, dtype), Decoder(layers, dtype))
-    optimizer_vanilla = optim.Adam(model_vanilla.parameters(), lr=1e-5)
+    optimizer_vanilla = optim.SGD(model_vanilla.parameters(), lr=lr_fc)
 
     # Set the number of epochs to for training
     epochs = n_epochs

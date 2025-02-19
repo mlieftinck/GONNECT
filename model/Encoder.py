@@ -43,6 +43,10 @@ class BIEncoder(Encoder):
         # Initialize biologically-informed masks
         self.proxy_masks = self._create_proxy_masks()
         self.edge_masks = self._create_edge_masks()
+        test_proxy_sum = sum([torch.sum(mask) for mask in self.proxy_masks])
+        test_edge_sum = sum([torch.sum(mask) for mask in self.edge_masks])
+        test_proxy_shape = sum([mask.shape[0] * mask.shape[1] for mask in self.proxy_masks])
+        test_edge_shape = sum([mask.shape[0] * mask.shape[1] for mask in self.edge_masks])
 
         # Mask weights using proxy and edge masks
         self.mask_weights()
@@ -101,14 +105,21 @@ class BIEncoder(Encoder):
 
 
 class SparseEncoder(nn.Module):
-    def __init__(self, go_layers, dtype, protocol="coo"):
+    def __init__(self, go_layers, dtype, masks=None, protocol="coo"):
         super(SparseEncoder, self).__init__()
         self.go_layers = list(reversed(go_layers))
         self.protocol = protocol
 
         # Initialize masks
-        self.proxy_masks = self._create_proxy_masks()
-        self.edge_masks = self._create_edge_masks()
+        if masks:
+            self.edge_masks = masks[0]
+            self.proxy_masks = masks[1]
+        else:
+            self.edge_masks = self._create_edge_masks()
+            self.proxy_masks = self._create_proxy_masks()
+            # torch.save(self.edge_masks, "../masks/(1, 10)/bp_100_sparse_edge_masks.pt")
+            # torch.save(self.proxy_masks, "../masks/(1, 10)/bp_100_sparse_proxy_masks.pt")
+            # print("----- Saved masks to file -----")
 
         # Initialize architecture
         network_layers = []
@@ -127,6 +138,9 @@ class SparseEncoder(nn.Module):
             x = layer(x)
         return x
 
+    def mask_weights(self):
+        return 0
+
     def _create_proxy_masks(self):
         proxy_masks = []
         for n in range(len(self.go_layers) - 1):
@@ -143,14 +157,16 @@ class SparseEncoder(nn.Module):
         for n in range(len(self.go_layers) - 1):
             current_layer = self.go_layers[n]
             next_layer = self.go_layers[n + 1]
-            edge_mask = torch.zeros(len(next_layer), len(current_layer), dtype=torch.bool)
-
+            non_zero_indices = []
             for i in range(len(current_layer)):
                 child = current_layer[i]
                 parent_ids = [parent.item_id for parent in child.parents]
                 next_layer_ids = [term.item_id for term in next_layer]
                 for j in range(len(next_layer)):
                     if next_layer_ids[j] in parent_ids:
-                        edge_mask[j][i] = 1
-            edge_masks.append(edge_mask)
+                        non_zero_indices.append([j, i])
+
+            edge_mask = torch.sparse_coo_tensor(torch.tensor(non_zero_indices).t(), torch.ones(len(non_zero_indices)),
+                                                size=(len(next_layer), len(current_layer)), dtype=torch.bool)
+            edge_masks.append(edge_mask.coalesce())
         return edge_masks

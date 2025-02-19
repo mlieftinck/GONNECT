@@ -23,11 +23,15 @@ class SparseLinear(nn.Linear):
             raise Exception(f"Unknown sparsity protocol: {protocol}")
 
         self.edge_mask = mask
-        masked_weight = torch.masked_fill(self.weight.data, self.edge_mask == 0, value=0)
-        sparse_weight = masked_weight.to_sparse(layout=self.protocol)
-        self.weight = nn.Parameter(sparse_weight)
-        if bias:
-            self.bias.data.to_sparse(layout=self.protocol)
+        # Used for dense masks
+        # masked_weight = torch.masked_fill(self.weight.data, self.edge_mask == 0, value=0)
+        # sparse_weight = masked_weight.to_sparse(layout=self.protocol)
+        # self.weight = nn.Parameter(sparse_weight)
+        # Used for sparse masks
+        self.weight = nn.Parameter(self.weight.data.sparse_mask(self.edge_mask))
+        # Bias does not need to be sparse
+        # if bias:
+        #     self.bias.data.to_sparse(layout=self.protocol)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.matrix_multiplication(x, self.weight.T) + self.bias
