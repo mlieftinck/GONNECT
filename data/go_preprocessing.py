@@ -138,7 +138,7 @@ def prune_skip_connections(go: dict[str, GOTerm]):
     """If a node A has parents B and C, and B is also an (indirect) parent of C, remove edge AB."""
     pruning_events = 0
     # Define direct and indirect parent sets
-    for term_id in go.keys():
+    for term_id in sorted(go.keys()):
         direct_parent_ids = {parent.item_id for parent in go[term_id].parents}
         indirect_parent_ids = set()
         for parent_id in direct_parent_ids:
@@ -163,10 +163,7 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
     Parent(s) of A become(s) the new parent(s) of A's children."""
     merge_events = 0
     merged_term_ids = []
-    term_ids = go.keys()
-    # Debug:
-    # removed_terms = []
-    for term_id in term_ids:
+    for term_id in sorted(go.keys()):
         term = go[term_id]
 
         # Skip over alternative IDs, they will be removed together with their corresponding term
@@ -178,8 +175,6 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         # Check merge conditions (root and leaves are never merged)
         if (len(children) > 0) and (len(parents) > 0):
             if (len(parents) <= threshold_parents) & (len(children) <= threshold_children):
-                # Debug:
-                # removed_terms.append(term_id)
 
                 # Update parent-child relations
                 for parent in parents:
@@ -202,9 +197,6 @@ def merge_chains(go: dict[str, GOTerm], threshold_parents=1, threshold_children=
         go.pop(merged_id)
 
     # print(f"Merge events: {merge_events}")
-
-    # Debug:
-    # return merge_events, removed_terms
     return merge_events
 
 
@@ -269,7 +261,7 @@ def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
         update_level_and_depth(go[proxy_item_id])
 
     # Once balanced, move down to the children of the children, until leaf layer
-    for child in root.children:
+    for child in sorted(root.children, key=lambda x: x.item_id):
         if not is_imbalanced(child):
             insert_proxy_terms(go, child, original_dag_size)
 
