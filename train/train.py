@@ -7,6 +7,7 @@ from data.DAGGenerator import DAGGenerator
 from model.Encoder import Encoder, BIEncoder, SparseEncoder
 from model.Decoder import Decoder, BIDecoder, SparseDecoder
 from model.Autoencoder import Autoencoder
+from model.SparseLinear import SparseLinear
 
 
 def loss_kl_divergence(inputs, outputs, net):
@@ -39,15 +40,18 @@ def train(train_loader, net, optimizer, loss_fn=F.mse_loss):
             loss = loss_fn(outputs, inputs)
         loss.backward()
 
-        # Force gradients (Option 1)
+        # Force gradients (optional as weight masking should be sufficient)
         if isinstance(net.encoder, BIEncoder):
             net.encoder.mask_gradients()
 
+        test = net.encoder.layers[0].weight.data
         optimizer.step()
 
-        # Force weights (Options 2)
-        if isinstance(net.encoder, BIEncoder):
-            net.encoder.mask_weights()
+        # Force biologically-informed weights
+        net.encoder.mask_weights()
+        # for n, layer in enumerate([l for l in net.encoder.layers if isinstance(l, SparseLinear)]):
+        #     print(f"Non-zero weights in layer {n}: {layer.weight.coalesce().values().data}")
+        # print("")
 
         # keep track of loss and accuracy
         avg_loss += loss
@@ -56,10 +60,11 @@ def train(train_loader, net, optimizer, loss_fn=F.mse_loss):
 
 
 if __name__ == "__main__":
-    n_samples = 1000
+    n_samples = 10
     batch_size = 10
-    n_epochs = 10
-    dtype=torch.float32
+    n_epochs = 1000
+    lr = 1e-1
+    dtype = torch.float32
 
     # DAG to layers
     dag = DAGGenerator.dag4()
@@ -74,9 +79,9 @@ if __name__ == "__main__":
 
     dataloader = DataLoader(data, batch_size=batch_size, shuffle=False)
 
-    model = Autoencoder(SparseEncoder(layers, dtype=dtype), Decoder(layers, dtype=dtype))
+    model = Autoencoder(Encoder(layers, dtype=dtype), Decoder(layers, dtype=dtype))
 
-    optimizer = optim.SGD(model.parameters(), lr=5e-3)
+    optimizer = optim.SGD(model.parameters(), lr=lr)
 
     # Set the number of epochs for training
     epochs = n_epochs

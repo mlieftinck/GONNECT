@@ -28,7 +28,7 @@ class SparseLinear(nn.Linear):
         # sparse_weight = masked_weight.to_sparse(layout=self.protocol)
         # self.weight = nn.Parameter(sparse_weight)
         # Used for sparse masks
-        self.weight = nn.Parameter(self.weight.data.sparse_mask(self.edge_mask))
+        self.weight = nn.Parameter(self.weight.data.sparse_mask(self.edge_mask).coalesce())
         # Bias does not need to be sparse
         # if bias:
         #     self.bias.data.to_sparse(layout=self.protocol)

@@ -5,6 +5,8 @@ from model.SparseLinear import SparseLinear
 
 
 class Encoder(nn.Module):
+    """Base class for fully connected dense encoder."""
+
     def __init__(self, go_layers, dtype):
         super(Encoder, self).__init__()
 
@@ -30,13 +32,17 @@ class Encoder(nn.Module):
         return x
 
     def mask_weights(self):
+        """Implemented in BIEncoder subclass."""
         return
 
     def mask_gradients(self):
+        """Implemented in BIEncoder subclass."""
         return
 
 
 class BIEncoder(Encoder):
+    """Encoder subclass. Uses dense weights and dense masks derived from provided GO structure to construct a biologically-informed dense encoder."""
+
     def __init__(self, go_layers, dtype):
         super(BIEncoder, self).__init__(go_layers, dtype)
 
@@ -52,6 +58,7 @@ class BIEncoder(Encoder):
         self.mask_weights()
 
     def mask_weights(self):
+        """Using the internal dense mask matrices, mask the dense weights and biases after each training step."""
         # Mask weights using proxy and edge masks
         mask_index = 0
         for layer in self.layers:
@@ -64,6 +71,7 @@ class BIEncoder(Encoder):
                 mask_index += 1
 
     def mask_gradients(self):
+        """Mask the dense gradients of weights and biases after the backwards pass to prevent masked values getting updates."""
         # Mask gradients using proxy and edge masks
         mask_index = 0
         for layer in self.layers:
@@ -76,6 +84,7 @@ class BIEncoder(Encoder):
                 mask_index += 1
 
     def _create_proxy_masks(self):
+        """Returns a list of dense 1D boolean tensors that represent each network layer. Each non-zero entry means that the corresponding term in that layer is a ProxyTerm."""
         proxy_masks = []
         for n in range(len(self.go_layers) - 1):
             next_layer = self.go_layers[n + 1]
@@ -87,6 +96,7 @@ class BIEncoder(Encoder):
         return proxy_masks
 
     def _create_edge_masks(self):
+        """Returns a list of dense 2D boolean tensors. Each tensor functions as an adjacency matrix between network layers, derived from GO."""
         edge_masks = []
         for n in range(len(self.go_layers) - 1):
             current_layer = self.go_layers[n]
@@ -105,7 +115,11 @@ class BIEncoder(Encoder):
 
 
 class SparseEncoder(nn.Module):
+    """Encoder class. Uses sparse weights and sparse masks derived from provided GO structure (or from file) to construct a biologically-informed sparse encoder."""
+
     def __init__(self, go_layers, dtype, masks=None, protocol="coo"):
+        # Flag for saving the computed masks, to avoid GO preprocessing
+        save = False
         super(SparseEncoder, self).__init__()
         self.go_layers = list(reversed(go_layers))
         self.protocol = protocol
@@ -117,9 +131,10 @@ class SparseEncoder(nn.Module):
         else:
             self.edge_masks = self._create_edge_masks()
             self.proxy_masks = self._create_proxy_masks()
-            # torch.save(self.edge_masks, "../masks/(1, 10)/bp_100_sparse_edge_masks.pt")
-            # torch.save(self.proxy_masks, "../masks/(1, 10)/bp_100_sparse_proxy_masks.pt")
-            # print("----- Saved masks to file -----")
+            if save:
+                torch.save(self.edge_masks, "../masks/(1, 10)/bp_100_sparse_edge_masks.pt")
+                torch.save(self.proxy_masks, "../masks/(1, 10)/bp_100_sparse_proxy_masks.pt")
+                print("----- Saved masks to file -----")
 
         # Initialize architecture
         network_layers = []
@@ -132,6 +147,8 @@ class SparseEncoder(nn.Module):
                 network_layers.append(self.activation)
             # Final layer has no activation
         self.layers = nn.ModuleList(network_layers)
+        # Apply proxy mask to force weights to 1
+        self.mask_weights()
 
     def forward(self, x):
         for layer in self.layers:
@@ -139,9 +156,23 @@ class SparseEncoder(nn.Module):
         return x
 
     def mask_weights(self):
-        return 0
+        """Sparse weight matrices ensure that edgeless weights remain zero. Dense proxy masks are used to set the non-zero weights corresponding to a ProxyTerm to 1, and their bias to 0."""
+        mask_index = 0
+        for layer in self.layers:
+            if isinstance(layer, SparseLinear):
+                nnz_rows = layer.weight.data.coalesce().indices()[0]
+                proxy_mask = self.proxy_masks[mask_index]
+                # If a row of the sparse weight matrix corresponds to a ProxyTerm, all non-zero values in that row are set to 1
+                for j in range(len(nnz_rows)):
+                    if proxy_mask[nnz_rows[j]]:
+                        layer.weight.data = layer.weight.data.coalesce()
+                        layer.weight.data.values()[j] = 1
+                # Mask ProxyTerm bias
+                layer.bias.data = torch.masked_fill(layer.bias.data, proxy_mask.T, value=0)
+                mask_index += 1
 
     def _create_proxy_masks(self):
+        """Returns a list of dense 1D boolean tensors that represent each network layer. Each non-zero entry means that the corresponding term in that layer is a ProxyTerm."""
         proxy_masks = []
         for n in range(len(self.go_layers) - 1):
             next_layer = self.go_layers[n + 1]
@@ -153,11 +184,13 @@ class SparseEncoder(nn.Module):
         return proxy_masks
 
     def _create_edge_masks(self):
+        """Returns a list of sparse 2D boolean tensors. Each tensor functions as an adjacency matrix between network layers, derived from GO."""
         edge_masks = []
         for n in range(len(self.go_layers) - 1):
             current_layer = self.go_layers[n]
             next_layer = self.go_layers[n + 1]
             non_zero_indices = []
+            # For each layer, find the coordinates of the non-zero values of the adjacency matrix
             for i in range(len(current_layer)):
                 child = current_layer[i]
                 parent_ids = [parent.item_id for parent in child.parents]
@@ -166,6 +199,7 @@ class SparseEncoder(nn.Module):
                     if next_layer_ids[j] in parent_ids:
                         non_zero_indices.append([j, i])
 
+            # Construct a sparse boolean mask using the non-zero coordinates
             edge_mask = torch.sparse_coo_tensor(torch.tensor(non_zero_indices).t(), torch.ones(len(non_zero_indices)),
                                                 size=(len(next_layer), len(current_layer)), dtype=torch.bool)
             edge_masks.append(edge_mask.coalesce())
