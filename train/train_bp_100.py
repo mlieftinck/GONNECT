@@ -5,11 +5,12 @@ import pandas as pd
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
 from model.Decoder import Decoder
-from model.Encoder import BIEncoder, Encoder, SparseEncoder
+from model.Encoder import Encoder, SparseEncoder
 from train import train
 
 if __name__ == "__main__":
     go_preprocessing = False
+    save = False
     data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip')
     n_nan_cols = 3
     genes = list(data["gene id"])
@@ -27,9 +28,10 @@ if __name__ == "__main__":
         print([len(layer) for layer in layers])
         masks = None
         print("----- COMPLETED: GO preprocessing -----")
-        # layer_copy = [torch.zeros(len(layer)) for layer in layers]
-        # torch.save(layer_copy, f"../masks/{str(merge_conditions)}/bp_100_layers.pt")
-        # print("----- Saved layers to file -----")
+        if save:
+            layer_copy = [torch.zeros(len(layer)) for layer in layers]
+            torch.save(layer_copy, f"../masks/{str(merge_conditions)}/bp_100_layers.pt")
+            print("----- Saved layers to file -----")
     else:
         print("\n----- START: Loading GO from file -----")
         layers = torch.load(f"../masks/{str(merge_conditions)}/bp_100_layers.pt", weights_only=True)
@@ -59,6 +61,7 @@ if __name__ == "__main__":
         print(f"Training loss after epoch {epoch + 1}: {train_loss}")
         train_loss_vanilla = train(dataloader, model_vanilla, optimizer_vanilla)
         epoch_losses_vanilla.append(train_loss_vanilla.item())
+        # print(f"Training loss after epoch {epoch + 1}: {train_loss_vanilla}")
 
     plt.plot(epoch_losses)
     plt.plot(epoch_losses_vanilla)

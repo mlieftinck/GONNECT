@@ -16,9 +16,10 @@ class Decoder(nn.Module):
             network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1]), dtype=dtype))
             if i < len(self.go_layers) - 2:
                 network_layers.append(self.activation)
+
+            # Option to add a final activation layer (used to be Sigmoid, but was removed for better performance)
             else:
-                # Final layer has Sigmoid activation
-                network_layers.append(nn.Sigmoid())
+                pass
         self.layers = nn.ModuleList(network_layers)
 
         # Initialize all weights
@@ -39,7 +40,7 @@ class Decoder(nn.Module):
 
 
 class BIDecoder(Decoder):
-    def __init__(self, go_layers):
+    def __init__(self, go_layers, dtype):
         super(BIDecoder, self).__init__(go_layers, dtype)
 
         # Initialize biologically-informed masks
@@ -100,6 +101,7 @@ class BIDecoder(Decoder):
                         edge_mask[j][i] = 1
             edge_masks.append(edge_mask)
         return edge_masks
+
 
 class SparseDecoder(nn.Module):
     def __init__(self, go_layers, dtype, protocol="coo"):

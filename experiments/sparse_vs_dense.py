@@ -19,8 +19,8 @@ if __name__ == "__main__":
     n_epochs = 10
     dtype = torch.float64
     loss_fn = torch.nn.functional.mse_loss
-    lr = 1e-3
-    n_runs = 2
+    lr = 1e-3 * 10
+    n_runs = 3
 
     # Initialize GO layers, prune the top off
     layers = construct_go_bp_layers(genes, merge_conditions=merge_conditions, print=True)
@@ -42,13 +42,13 @@ if __name__ == "__main__":
         t_start_dense = time.time()
         # Construct model
         model_dense = Autoencoder(BIEncoder(layers, dtype), Decoder(layers, dtype))
-        optimizer_dense = optim.SGD(model_dense.parameters(), lr=10*lr)
+        optimizer_dense = optim.SGD(model_dense.parameters(), lr=lr)
 
         # Set the number of epochs for training
         epochs = n_epochs
         epoch_losses_dense = []
         for epoch in range(epochs):  # loop over the dataset multiple times
-            train_loss, inputs, outputs = train(dataloader, model_dense, optimizer_dense, loss_fn=loss_fn)
+            train_loss = train(dataloader, model_dense, optimizer_dense, loss_fn=loss_fn)
             epoch_losses_dense.append(train_loss.item())
             print(f"Training loss after epoch {epoch + 1}: {train_loss}")
         t_dense = time.time() - t_start_dense
@@ -58,16 +58,15 @@ if __name__ == "__main__":
         t_start_sparse = time.time()
         # Construct model
         model_sparse = Autoencoder(SparseEncoder(layers, dtype), Decoder(layers, dtype))
-        optimizer_sparse = optim.SGD(model_sparse.parameters(), lr=10*lr)
+        optimizer_sparse = optim.SGD(model_sparse.parameters(), lr=lr)
 
         # Set the number of epochs for training
         epochs = n_epochs
         epoch_losses_sparse = []
         for epoch in range(epochs):  # loop over the dataset multiple times
-            train_loss, inputs, outputs = train(dataloader, model_sparse, optimizer_sparse, loss_fn=loss_fn)
+            train_loss = train(dataloader, model_sparse, optimizer_sparse, loss_fn=loss_fn)
             epoch_losses_sparse.append(train_loss.item())
             print(f"Training loss after epoch {epoch + 1}: {train_loss}")
-
         t_sparse = time.time() - t_start_sparse
 
         times_dense.append(t_dense)
