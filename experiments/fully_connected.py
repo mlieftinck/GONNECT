@@ -16,12 +16,10 @@ if __name__ == "__main__":
     merge_conditions = (1, 10)
     n_layers_used = 6
     batch_size = min(n_samples, 50)
-    n_epochs = 200
+    n_epochs = 2
     dtype = torch.float64
     lr = 1e-2
-
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print("device: ", device)
 
     go_layers = torch.load(f"../masks/{str(merge_conditions)}/bp_100_layers.pt", weights_only=True)
     encoder_layers = go_layers[-n_layers_used:]
@@ -43,18 +41,12 @@ if __name__ == "__main__":
     epochs = n_epochs
     epoch_losses = []
     for epoch in range(epochs):  # loop over the dataset multiple times
-        train_loss = train(dataloader, model, optimizer)
+        train_loss = train(dataloader, model, optimizer, device=device)
         epoch_losses.append(train_loss.item())
         print(f"Training loss after epoch {epoch + 1}: {train_loss}")
-
     plt.plot(epoch_losses)
     plt.show()
 
-    test_x = torch.tensor((data["ID0"])).reshape((1, 100))
+    test_x = torch.tensor((data["ID0"])).reshape((1, 100)).to(device)
     test_y = model(test_x)
-    test_w1 = model.encoder.layers[0].weight.data
-    test_w2 = model.decoder.layers[0].weight.data
-    test_b1 = model.encoder.layers[0].bias.data
-    test_b2 = model.decoder.layers[0].bias.data
-
     print(test_y)

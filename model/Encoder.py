@@ -160,6 +160,10 @@ class SparseEncoder(nn.Module):
         mask_index = 0
         for layer in self.layers:
             if isinstance(layer, SparseLinear):
+                # Ensure that devices match
+                if self.proxy_masks[mask_index].device != layer.weight.device:
+                    self.proxy_masks[mask_index] = self.proxy_masks[mask_index].to(layer.weight.device)
+
                 nnz_rows = layer.weight.data.coalesce().indices()[0]
                 proxy_mask = self.proxy_masks[mask_index]
                 # If a row of the sparse weight matrix corresponds to a ProxyTerm, all non-zero values in that row are set to 1

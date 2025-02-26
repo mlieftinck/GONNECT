@@ -7,25 +7,27 @@ from data.DAGGenerator import DAGGenerator
 from model.Encoder import Encoder, BIEncoder, SparseEncoder
 from model.Decoder import Decoder, BIDecoder, SparseDecoder
 from model.Autoencoder import Autoencoder
-from model.SparseLinear import SparseLinear
 
 
 def loss_kl_divergence(inputs, outputs, net):
     return ((inputs - outputs) ** 2).sum() + net.encoder.kl
 
 
-def train(train_loader, net, optimizer, loss_fn=F.mse_loss):
+def train(train_loader, net, optimizer, loss_fn=F.mse_loss, device="cpu"):
     """Trains variational autoencoder network for one epoch in batches.
     Args:
         train_loader: Data loader for training set.
         net: Neural network model.
         optimizer: Optimizer (e.g. SGD).
-        loss_fn: Loss function."""
+        loss_fn: Loss function.
+        device: Whether the network runs on CPU or GPU."""
 
+    net.to(device)
     avg_loss = 0
     # Iterate over batches
     for i, data in enumerate(train_loader):
         inputs = data[0]
+        inputs = inputs.to(device)
 
         # Zero the parameter gradients
         optimizer.zero_grad()
@@ -44,14 +46,10 @@ def train(train_loader, net, optimizer, loss_fn=F.mse_loss):
         if isinstance(net.encoder, BIEncoder):
             net.encoder.mask_gradients()
 
-        test = net.encoder.layers[0].weight.data
         optimizer.step()
 
         # Force biologically-informed weights
         net.encoder.mask_weights()
-        # for n, layer in enumerate([l for l in net.encoder.layers if isinstance(l, SparseLinear)]):
-        #     print(f"Non-zero weights in layer {n}: {layer.weight.coalesce().values().data}")
-        # print("")
 
         # keep track of loss and accuracy
         avg_loss += loss
