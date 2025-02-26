@@ -9,14 +9,15 @@ from model.Encoder import Encoder, SparseEncoder
 from train.train import train
 
 if __name__ == "__main__":
-    n_samples = 4000
+    n_samples = 1
     n_nan_cols = 3
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples), compression='gzip')
+    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples),
+                       compression='gzip').sort_values("gene id")
     genes = list(data["gene id"])
     merge_conditions = (1, 10)
     n_layers_used = 6
     batch_size = min(n_samples, 50)
-    n_epochs = 2
+    n_epochs = 200
     dtype = torch.float64
     lr = 1e-2
     device = 'cuda' if torch.cuda.is_available() else 'cpu'

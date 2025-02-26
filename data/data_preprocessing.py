@@ -106,7 +106,7 @@ if __name__ == '__main__':
             skipped.append(data_name)
 
     match_pairs = [data_names_greedy[i] + "\t" + data_ids_greedy[i] for i in range(len(data_names_greedy)) if
-                    data_ids_greedy[i]]
+                   data_ids_greedy[i]]
     if save:
         save_list(match_pairs, "../../GO_TCGA/gene_matches_bp_name2uniprotkb_greedy.txt")
 
@@ -116,10 +116,9 @@ if __name__ == '__main__':
         filtered_data = data[data["gene symbol"].isin(names)]
         filtered_data.to_csv("../../GO_TCGA/GE_bp.csv.gz", compression='gzip', index=False)
 
-    # Save dataset containing the first 100 genes, including ID
-    first_hundred_rows = filtered_data.head(100)
-    first_hundred_rows.insert(2, "gene id", np.array(ids[:100]))
-    if save:
+        # Save dataset containing the first 100 genes, including ID
+        first_hundred_rows = filtered_data.head(100)
+        first_hundred_rows.insert(2, "gene id", np.array(ids[:100]))
         first_hundred_rows.to_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip', index=False)
 
     # Test names, ids both for duplicates

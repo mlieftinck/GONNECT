@@ -9,9 +9,9 @@ from model.Encoder import Encoder, SparseEncoder
 from train import train
 
 if __name__ == "__main__":
-    go_preprocessing = False
+    go_preprocessing = True
     save = False
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip')
+    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip').sort_values("gene id")
     n_nan_cols = 3
     genes = list(data["gene id"])
     merge_conditions = (1, 10)
