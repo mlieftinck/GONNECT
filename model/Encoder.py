@@ -120,6 +120,9 @@ class SparseEncoder(nn.Module):
     def __init__(self, go_layers, dtype, masks=None, protocol="coo"):
         # Flag for saving the computed masks, to avoid GO preprocessing
         save = False
+        dataset_name = "xxx"
+        merge_conditions = (0, 0)
+
         super(SparseEncoder, self).__init__()
         self.go_layers = list(reversed(go_layers))
         self.protocol = protocol
@@ -132,8 +135,8 @@ class SparseEncoder(nn.Module):
             self.edge_masks = self._create_edge_masks()
             self.proxy_masks = self._create_proxy_masks()
             if save:
-                torch.save(self.edge_masks, "../masks/(1, 10)/bp_100_sparse_edge_masks.pt")
-                torch.save(self.proxy_masks, "../masks/(1, 10)/bp_100_sparse_proxy_masks.pt")
+                torch.save(self.edge_masks, f"../masks/{merge_conditions}/{dataset_name}_sparse_edge_masks.pt")
+                torch.save(self.proxy_masks, f"../masks/{merge_conditions}/{dataset_name}_sparse_proxy_masks.pt")
                 print("----- Saved masks to file -----")
 
         # Initialize architecture

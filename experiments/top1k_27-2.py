@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import pandas as pd
+
+from data.data_preprocessing import read_gene_ids, save_list
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
 from model.Decoder import Decoder
@@ -9,32 +11,49 @@ from model.Encoder import Encoder, SparseEncoder
 from train.train import train
 
 if __name__ == "__main__":
+    dataset_name = "GE_top1k_bp"
+    go_preprocessing = True
+    save = False
     biologically_informed = True
-    n_samples = 1000
-    n_nan_cols = 3
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples),
-                       compression='gzip').sort_values("gene id")
+    n_samples = 10
+    n_nan_cols = 2
+    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(n_nan_cols + min(n_samples, 11499)),
+                       compression="gzip").sort_values("gene id")
     genes = list(data["gene id"])
     merge_conditions = (1, 10)
-    n_layers_used = 6
-    batch_size = min(n_samples, 50)
+    n_go_layers_used = 6
+    batch_size = 50
     n_epochs = 50
     dtype = torch.float64
     lr = 1e-2
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("device: ", device)
 
-    go_layers = torch.load(f"../masks/{str(merge_conditions)}/bp_100_layers.pt", weights_only=True)
-    encoder_layers = go_layers[-n_layers_used:]
-    mask_edge = torch.load(f"../masks/{str(merge_conditions)}/bp_100_sparse_edge_masks.pt", weights_only=True)
-    mask_proxy = torch.load(f"../masks/{str(merge_conditions)}/bp_100_sparse_proxy_masks.pt", weights_only=True)
+    if go_preprocessing:
+        print("\n----- START: GO preprocessing -----")
+        # Initialize GO layers, prune the top off
+        layers = construct_go_bp_layers(genes, merge_conditions, print=True)
+        masks = None
+        go_layers = layers
+        print("----- COMPLETED: GO preprocessing -----")
+        if save:
+            layer_copy = [torch.zeros(len(layer)) for layer in layers]
+            torch.save(layer_copy, f"../masks/{str(merge_conditions)}/{dataset_name}_layers.pt")
+            print("----- Saved layers to file -----")
+
+    else:
+        go_layers = torch.load(f"../masks/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
+
+    encoder_layers = go_layers[-n_go_layers_used:]
+    mask_edge = torch.load(f"../masks/{str(merge_conditions)}/{dataset_name}_sparse_edge_masks.pt", weights_only=True)
+    mask_proxy = torch.load(f"../masks/{str(merge_conditions)}/{dataset_name}_sparse_proxy_masks.pt", weights_only=True)
     masks = (mask_edge, mask_proxy)
     decoder_layers = [torch.zeros(len(encoder_layers[0])), torch.zeros(75), torch.zeros(len(encoder_layers[-1]))]
 
     # Convert dataset from pandas to torch
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
     torch_dataset = TensorDataset(torch.from_numpy(np.transpose(data_np)))
-    dataloader = DataLoader(torch_dataset, batch_size=batch_size, shuffle=False)
+    dataloader = DataLoader(torch_dataset, batch_size=min(n_samples, batch_size), shuffle=False)
 
     # Construct model(s)
     if biologically_informed:

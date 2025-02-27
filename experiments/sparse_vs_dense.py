@@ -10,7 +10,7 @@ from train.train import train
 import time
 
 if __name__ == "__main__":
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip')
+    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip').sort_values("gene id")
     n_nan_cols = 3
     genes = list(data["gene id"])
     merge_conditions = (1, 10)
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     n_epochs = 10
     dtype = torch.float64
     loss_fn = torch.nn.functional.mse_loss
-    lr = 1e-3 * 10
+    lr = 1e-2
     n_runs = 3
 
     # Initialize GO layers, prune the top off

@@ -6,7 +6,7 @@ from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
 from model.Decoder import Decoder
 from model.Encoder import Encoder, SparseEncoder
-from train import train
+from train.train import train
 
 if __name__ == "__main__":
     go_preprocessing = True
