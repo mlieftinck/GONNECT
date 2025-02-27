@@ -53,33 +53,35 @@ def save_list(a, path: str):
 
 if __name__ == '__main__':
     save = False
-    data = pd.read_csv("../../GO_TCGA/GE.csv.gz", compression='gzip')
+    dataset_name = "GE_top1k"
+    id_col = 1
+    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv")
     # Retrieve all genes in data as gene name and UniProt ID
-    name_2_id = read_gene_names_to_uniprot_ids(path="../../GO_TCGA/gene_data_name2uniprotkb.tsv")
-    names, ids = read_gene_names_and_ids(path="../../GO_TCGA/gene_data_name2uniprotkb.tsv")
+    name_2_id = read_gene_names_to_uniprot_ids(path=f"../../GO_TCGA/{dataset_name}_name2uniprotkb.tsv")
+    names, ids = read_gene_names_and_ids(path=f"../../GO_TCGA/{dataset_name}_name2uniprotkb.tsv")
 
     # Save list of ID matches between data and GO (no duplicates)
     # Result: different IDs map to the same name
     go_ids = read_gene_ids("../../GO_TCGA/gene_go_bp_id.txt")
     if save:
-        save_gene_matches(set(go_ids), set(ids), path="../../GO_TCGA/gene_matches_bp_id.txt")
+        save_gene_matches(set(go_ids), set(ids), path=f"../../GO_TCGA/{dataset_name}_matches_bp_id.txt")
 
     # Save list of gene names corresponding to ID matches
     # Result: duplicate names and duplicate IDs
-    match_ids = read_gene_ids("../../GO_TCGA/gene_matches_bp_id.txt")
+    match_ids = read_gene_ids(f"../../GO_TCGA/{dataset_name}_matches_bp_id.txt")
     match_names = [names[i] for i in range(len(ids)) if ids[i] in match_ids]
     test_distinct_names_with_match = set(match_names)
     match_names_id = [ids[i] for i in range(len(ids)) if ids[i] in match_ids]
     duplicate_match_names = [i for i in set(match_names) if match_names.count(i) > 1]
     duplicate_match_names_id = [i for i in set(match_names_id) if match_names_id.count(i) > 1]
     if save:
-        save_list(match_names, path="../../GO_TCGA/gene_matches_bp_name.txt")
+        save_list(match_names, path=f"../../GO_TCGA/{dataset_name}_matches_bp_name.txt")
 
     # Save (name, ID) pairs for matched IDs
     # Result: duplicate names and duplicate IDs
     match_pairs = [names[i] + "\t" + ids[i] for i in range(len(ids)) if ids[i] in match_ids]
     if save:
-        save_list(match_pairs, "../../GO_TCGA/gene_matches_bp_name2uniprotkb.txt")
+        save_list(match_pairs, f"../../GO_TCGA/{dataset_name}_matches_bp_name2uniprotkb.txt")
 
     # Greedy approach of matching names to IDs
     # if a name has an ID not yet used -> match name and ID
@@ -88,7 +90,7 @@ if __name__ == '__main__':
     data_ids_greedy = []
     data_names_greedy = list(name_2_id.keys())
     skipped = []
-    id_2_name = read_uniprot_ids_to_gene_names(path="../../GO_TCGA/gene_data_name2uniprotkb.tsv")
+    id_2_name = read_uniprot_ids_to_gene_names(path=f"../../GO_TCGA/{dataset_name}_name2uniprotkb.tsv")
     for data_name in data_names_greedy:
         id_in_go = False
         skipped_because_id_is_taken = False
@@ -108,18 +110,18 @@ if __name__ == '__main__':
     match_pairs = [data_names_greedy[i] + "\t" + data_ids_greedy[i] for i in range(len(data_names_greedy)) if
                    data_ids_greedy[i]]
     if save:
-        save_list(match_pairs, "../../GO_TCGA/gene_matches_bp_name2uniprotkb_greedy.txt")
+        save_list(match_pairs, f"../../GO_TCGA/{dataset_name}_matches_bp_name2uniprotkb_greedy.txt")
 
     # Save dataset containing only gene names with greedy ID (actual IDs not in dataset)
     if save:
-        names, ids = read_gene_names_and_ids(path="../../GO_TCGA/gene_matches_bp_name2uniprotkb_greedy.txt")
+        names, ids = read_gene_names_and_ids(path=f"../../GO_TCGA/{dataset_name}_matches_bp_name2uniprotkb_greedy.txt")
         filtered_data = data[data["gene symbol"].isin(names)]
-        filtered_data.to_csv("../../GO_TCGA/GE_bp.csv.gz", compression='gzip', index=False)
+        filtered_data.insert(id_col, "gene id", np.array(ids))
+        filtered_data.to_csv(f"../../GO_TCGA/{dataset_name}_bp.csv.gz", compression="gzip", index=False)
 
         # Save dataset containing the first 100 genes, including ID
         first_hundred_rows = filtered_data.head(100)
-        first_hundred_rows.insert(2, "gene id", np.array(ids[:100]))
-        first_hundred_rows.to_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip', index=False)
+        first_hundred_rows.to_csv(f"../../GO_TCGA/{dataset_name}_bp_100.csv.gz", compression="gzip", index=False)
 
     # Test names, ids both for duplicates
     print(len(names))
