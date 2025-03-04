@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 def read_gene_names_to_uniprot_ids(path: str):
@@ -49,6 +50,19 @@ def save_gene_matches(gene_set1: set[str], gene_set2: set[str], path: str):
 def save_list(a, path: str):
     with open(path, "w") as f:
         f.write("\n".join(a))
+
+
+def split_data(data, split=0.7, seed=1):
+    """Split the given dataframe in train, validation and test sets. The split argument sets the training fraction, the remainder is split 50/50 between validation and test."""
+    validation_test_split = 0.5
+    # Strip any non-sample column before making the splits
+    cols = [col for col in data.columns if col[:2] == "ID"]
+    train_cols, remaining_cols = train_test_split(cols, train_size=split, random_state=seed)
+    validation_cols, test_cols = train_test_split(remaining_cols, train_size=validation_test_split, random_state=seed)
+    train_set = data[train_cols]
+    validation_set = data[validation_cols]
+    test_set = data[test_cols]
+    return train_set, validation_set, test_set
 
 
 if __name__ == '__main__':

@@ -57,6 +57,26 @@ def train(train_loader, net, optimizer, loss_fn=F.mse_loss, device="cpu"):
     return avg_loss / len(train_loader)
 
 
+def test(test_loader, net, loss_fn=F.mse_loss, device="cpu"):
+    net.to(device)
+    avg_loss = 0
+
+    with torch.no_grad():
+        # Iterate over batches
+        for i, data in enumerate(test_loader):
+            inputs = data[0]
+            inputs = inputs.to(device)
+
+            # Forward pass
+            outputs = net(inputs)
+            loss = loss_fn(outputs, inputs)
+
+            # keep track of loss and accuracy
+            avg_loss += loss
+
+    return avg_loss / len(test_loader)
+
+
 if __name__ == "__main__":
     n_samples = 10
     batch_size = 10

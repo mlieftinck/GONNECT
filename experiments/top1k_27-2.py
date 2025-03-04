@@ -1,42 +1,55 @@
+import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import pandas as pd
 
-from data.data_preprocessing import read_gene_ids, save_list
+from data.data_preprocessing import split_data
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
 from model.Decoder import Decoder
 from model.Encoder import Encoder, SparseEncoder
-from train.train import train
+from train.train import train, test
 
 if __name__ == "__main__":
-    dataset_name = "GE_top1k_bp"
-    go_preprocessing = True
-    save = False
-    biologically_informed = True
-    n_samples = 10
-    n_nan_cols = 2
-    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(n_nan_cols + min(n_samples, 11499)),
-                       compression="gzip").sort_values("gene id")
-    genes = list(data["gene id"])
+    # GO params
+    go_preprocessing = False
     merge_conditions = (1, 10)
     n_go_layers_used = 6
-    batch_size = 50
-    n_epochs = 50
+    # Save model params
+    save_architecture = False
+    save_weights = True
+    save_weights_path = "model_1"
+    load_weights = False
+    load_weights_path = "model_1"
+    biologically_informed = True
+    # Data params
+    n_samples = 10000
+    batch_size = 500
+    split = 0.7
+    seed = 10
+    dataset_name = "GE_top1k_bp"
+    n_nan_cols = 2
     dtype = torch.float64
-    lr = 1e-2
+    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(n_nan_cols + min(n_samples, 11499)),
+                       compression="gzip").sort_values("gene id")
+    # Training params
+    n_epochs = 3
+    lr = 1e-4
+    momentum = 0
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cpu"
     print("device: ", device)
 
     if go_preprocessing:
         print("\n----- START: GO preprocessing -----")
         # Initialize GO layers, prune the top off
+        genes = list(data["gene id"])
         layers = construct_go_bp_layers(genes, merge_conditions, print=True)
         masks = None
         go_layers = layers
         print("----- COMPLETED: GO preprocessing -----")
-        if save:
+        if save_architecture:
             layer_copy = [torch.zeros(len(layer)) for layer in layers]
             torch.save(layer_copy, f"../masks/{str(merge_conditions)}/{dataset_name}_layers.pt")
             print("----- Saved layers to file -----")
@@ -50,28 +63,42 @@ if __name__ == "__main__":
     masks = (mask_edge, mask_proxy)
     decoder_layers = [torch.zeros(len(encoder_layers[0])), torch.zeros(75), torch.zeros(len(encoder_layers[-1]))]
 
-    # Convert dataset from pandas to torch
+    # Prepare data splits and pandas to torch conversion
+    train_set, validation_set, test_set = split_data(data, split, seed)
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
-    torch_dataset = TensorDataset(torch.from_numpy(np.transpose(data_np)))
-    dataloader = DataLoader(torch_dataset, batch_size=min(n_samples, batch_size), shuffle=False)
+    data_torch = TensorDataset(torch.from_numpy(np.transpose(data_np)))
+    dataloader = DataLoader(data_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    train_torch = TensorDataset(torch.from_numpy(np.transpose(train_set.to_numpy())))
+    validation_torch = TensorDataset(torch.from_numpy(np.transpose(validation_set.to_numpy())))
+    test_torch = TensorDataset(torch.from_numpy(np.transpose(test_set.to_numpy())))
+    trainloader = DataLoader(train_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    validationloader = DataLoader(validation_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    testloader = DataLoader(test_torch, batch_size=min(n_samples, batch_size), shuffle=False)
 
-    # Construct model(s)
+    # Construct model and optimizer
     if biologically_informed:
         model = Autoencoder(SparseEncoder(encoder_layers, dtype, masks), Decoder(decoder_layers, dtype))
     else:
         model = Autoencoder(Encoder(encoder_layers, dtype), Decoder(decoder_layers, dtype))
-    optimizer = optim.SGD(model.parameters(), lr=lr)
+    if load_weights:
+        model.load_state_dict(torch.load(f"../saved_weights/{dataset_name}/{save_weights_path}.pt"))
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
     # Set the number of epochs to for training
     epochs = n_epochs
     epoch_losses = []
     t_start = time.time()
     for epoch in range(epochs):  # loop over the dataset multiple times
-        train_loss = train(dataloader, model, optimizer, device=device)
-        epoch_losses.append(train_loss.item())
-        print(f"Training loss after epoch {epoch + 1}: {train_loss}")
+        train_loss = train(trainloader, model, optimizer, device=device)
+        print(f"Train loss after epoch {epoch + 1}:\t{train_loss}")
+        test_loss = test(testloader, model, device=device)
+        print(f"Test  loss after epoch {epoch + 1}:\t{test_loss}")
+        epoch_losses.append([train_loss.item(), test_loss.item()])
     t_end = time.time() - t_start
-    print(f"Training time: {t_end:.2f} seconds")
+    print(f"Total training time: {t_end // 60:.0f}m {t_end % 60:.0f}s")
+
+    if save_weights:
+        torch.save(model.state_dict(), f"../saved_weights/{dataset_name}/{save_weights_path}.pt")
 
     plt.plot(epoch_losses)
     if biologically_informed:
@@ -80,6 +107,7 @@ if __name__ == "__main__":
         plt.title(f"Training loss for fully-connected encoder (dense) (n = {n_samples})")
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
+    plt.legend(["train", "test"])
     plt.show()
 
     # test_x = torch.tensor((data["ID0"])).reshape((1, 100)).to(device)
