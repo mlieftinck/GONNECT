@@ -17,7 +17,7 @@ if __name__ == "__main__":
     n_go_layers_used = 6
     # Save model params
     save_architecture = False
-    save_weights = True
+    save_weights = False
     save_weights_path = "model_1"
     load_weights = False
     load_weights_path = "model_1"

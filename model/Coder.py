@@ -35,7 +35,7 @@ class DenseCoder(nn.Module):
 
 
 class DenseBICoder(DenseCoder):
-    def __init__(self, go_layers, activation, dtype, masks=None):
+    def __init__(self, go_layers, activation, dtype, masks):
         super(DenseCoder, self).__init__(go_layers, activation, dtype)
 
         # Initialize biologically-informed masks
@@ -45,9 +45,6 @@ class DenseBICoder(DenseCoder):
         else:
             self.proxy_masks = self._create_proxy_masks()
             self.edge_masks = self._create_edge_masks()
-
-        # Mask weights using proxy and edge masks
-        self.mask_weights()
 
     def mask_weights(self):
         """Using the internal dense mask matrices, mask the dense weights and biases after each training step."""
@@ -88,14 +85,14 @@ class DenseBICoder(DenseCoder):
         return proxy_masks
 
     def _create_edge_masks(self):
-        """Implemented in Encoder/Decoder (sub)classes"""
+        """Encoder/Decoder dependent. Implemented in respective subclasses."""
         return [torch.empty() for _ in range(len(self.go_layers))]
 
 
 class SparseCoder(nn.Module):
     """Helper class for shared functionality between sparse encoder and decoder."""
 
-    def __init__(self, go_layers, activation, dtype, masks=None):
+    def __init__(self, go_layers, activation, dtype, masks):
         super(SparseCoder, self).__init__()
 
         # Initialize masks
