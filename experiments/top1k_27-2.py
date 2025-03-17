@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
@@ -7,8 +6,8 @@ import pandas as pd
 from data.data_preprocessing import split_data
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
-from model.Decoder import Decoder
-from model.Encoder import Encoder, SparseEncoder
+from model.OldDecoder import Decoder
+from model.OldEncoder import Encoder, SparseEncoder
 from train.train import train, test
 
 if __name__ == "__main__":
@@ -24,7 +23,7 @@ if __name__ == "__main__":
     load_weights_path = "model_1"
     biologically_informed = True
     # Data params
-    n_samples = 10000
+    n_samples = 12000
     batch_size = 500
     split = 0.7
     seed = 10
@@ -34,7 +33,7 @@ if __name__ == "__main__":
     data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(n_nan_cols + min(n_samples, 11499)),
                        compression="gzip").sort_values("gene id")
     # Training params
-    n_epochs = 3
+    n_epochs = 1000
     lr = 1e-4
     momentum = 0
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -43,7 +42,7 @@ if __name__ == "__main__":
 
     if go_preprocessing:
         print("\n----- START: GO preprocessing -----")
-        # Initialize GO layers, prune the top off
+        # Initialize GO layers
         genes = list(data["gene id"])
         layers = construct_go_bp_layers(genes, merge_conditions, print=True)
         masks = None
@@ -81,7 +80,7 @@ if __name__ == "__main__":
     else:
         model = Autoencoder(Encoder(encoder_layers, dtype), Decoder(decoder_layers, dtype))
     if load_weights:
-        model.load_state_dict(torch.load(f"../saved_weights/{dataset_name}/{save_weights_path}.pt"))
+        model.load_state_dict(torch.load(f"../saved_weights/{dataset_name}/{save_weights_path}.pt", weights_only=True))
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
     # Set the number of epochs to for training
@@ -99,12 +98,13 @@ if __name__ == "__main__":
 
     if save_weights:
         torch.save(model.state_dict(), f"../saved_weights/{dataset_name}/{save_weights_path}.pt")
+        print(f"\n----- Saved weights to file ({save_weights_path}) -----")
 
     plt.plot(epoch_losses)
     if biologically_informed:
-        plt.title(f"Training loss for BI-encoder (sparse) (n = {n_samples})")
+        plt.title(f"Loss for BI-encoder (sparse) (n = {len(trainloader)})")
     else:
-        plt.title(f"Training loss for fully-connected encoder (dense) (n = {n_samples})")
+        plt.title(f"Loss for fully-connected encoder (dense) (n = {len(trainloader)})")
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend(["train", "test"])
