@@ -44,7 +44,7 @@ if __name__ == "__main__":
         print("\n----- START: GO preprocessing -----")
         # Initialize GO layers
         genes = list(data["gene id"])
-        layers = construct_go_bp_layers(genes, merge_conditions, print=True)
+        layers = construct_go_bp_layers(genes, merge_conditions, print_go=True)
         masks = None
         go_layers = layers
         print("----- COMPLETED: GO preprocessing -----")

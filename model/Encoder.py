@@ -7,7 +7,7 @@ from model.Coder import DenseCoder, DenseBICoder, SparseCoder
 class Encoder(DenseCoder):
     def __init__(self, go_layers, activation, dtype):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
-        self.go_layers = list(reversed(go_layers))
+        go_layers = list(reversed(go_layers))
         super(Encoder, self).__init__(go_layers, activation, dtype)
 
         # Optionally add activation after final linear layer
@@ -25,7 +25,7 @@ class Encoder(DenseCoder):
 class DenseBIEncoder(DenseBICoder):
     def __init__(self, go_layers, activation, dtype, masks=None):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
-        self.go_layers = list(reversed(go_layers))
+        go_layers = list(reversed(go_layers))
         super(DenseBIEncoder, self).__init__(go_layers, activation, dtype, masks)
 
         # Optionally add activation after final linear layer
@@ -64,7 +64,7 @@ class DenseBIEncoder(DenseBICoder):
 class SparseBIEncoder(SparseCoder):
     def __init__(self, go_layers, activation, dtype, masks=None):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
-        self.go_layers = list(reversed(go_layers))
+        go_layers = list(reversed(go_layers))
         super(SparseBIEncoder, self).__init__(go_layers, activation, dtype, masks)
 
         # Optionally add activation after final linear layer

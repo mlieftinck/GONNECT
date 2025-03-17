@@ -23,7 +23,7 @@ if __name__ == "__main__":
     n_runs = 3
 
     # Initialize GO layers, prune the top off
-    layers = construct_go_bp_layers(genes, merge_conditions=merge_conditions, print=True)
+    layers = construct_go_bp_layers(genes, merge_conditions=merge_conditions, print_go=True)
     layers = layers[2:]
 
     # Convert dataset from pandas to torch

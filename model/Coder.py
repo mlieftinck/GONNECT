@@ -38,7 +38,7 @@ class DenseBICoder(DenseCoder):
     """Base class for shared functionality between masked dense encoder and decoder."""
 
     def __init__(self, go_layers, activation, dtype, masks):
-        super(DenseCoder, self).__init__(go_layers, activation, dtype)
+        super(DenseBICoder, self).__init__(go_layers, activation, dtype)
 
         # Initialize biologically-informed masks
         if masks:
@@ -96,6 +96,7 @@ class SparseCoder(nn.Module):
 
     def __init__(self, go_layers, activation, dtype, masks):
         super(SparseCoder, self).__init__()
+        self.go_layers = go_layers
 
         # Initialize masks
         if masks:
@@ -107,12 +108,10 @@ class SparseCoder(nn.Module):
 
         # Initialize architecture (conversion to ModuleList is passed down to implementation)
         network_layers = []
-        self.go_layers = go_layers
         self.activation = activation
         for i in range(len(self.go_layers) - 1):
             network_layers.append(
-                SparseLinear(len(self.go_layers[i]), len(self.go_layers[i + 1]), self.edge_masks[i], dtype=dtype,
-                             protocol=self.protocol))
+                SparseLinear(len(self.go_layers[i]), len(self.go_layers[i + 1]), self.edge_masks[i], dtype=dtype))
             if i < len(self.go_layers) - 2:
                 network_layers.append(self.activation)
         # ModuleList conversion should appear here, but by passing that down it allows for additional activations to be added

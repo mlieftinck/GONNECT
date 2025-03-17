@@ -23,7 +23,7 @@ if __name__ == "__main__":
     if go_preprocessing:
         print("\n----- START: GO preprocessing -----")
         # Initialize GO layers, prune the top off
-        layers = construct_go_bp_layers(genes, merge_conditions, print=True)
+        layers = construct_go_bp_layers(genes, merge_conditions, print_go=True)
         layers = layers[2:]
         print([len(layer) for layer in layers])
         masks = None
