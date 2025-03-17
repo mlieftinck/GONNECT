@@ -6,7 +6,7 @@ from model.SparseLinear import SparseLinear
 
 
 class DenseCoder(nn.Module):
-    """Helper class for shared functionality between dense encoder and decoder."""
+    """Base class for shared functionality between dense encoder and decoder."""
 
     def __init__(self, go_layers, activation, dtype):
         super(DenseCoder, self).__init__()
@@ -35,6 +35,8 @@ class DenseCoder(nn.Module):
 
 
 class DenseBICoder(DenseCoder):
+    """Base class for shared functionality between masked dense encoder and decoder."""
+
     def __init__(self, go_layers, activation, dtype, masks):
         super(DenseCoder, self).__init__(go_layers, activation, dtype)
 
@@ -90,7 +92,7 @@ class DenseBICoder(DenseCoder):
 
 
 class SparseCoder(nn.Module):
-    """Helper class for shared functionality between sparse encoder and decoder."""
+    """Base class for shared functionality between sparse encoder and decoder."""
 
     def __init__(self, go_layers, activation, dtype, masks):
         super(SparseCoder, self).__init__()

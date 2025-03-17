@@ -6,8 +6,8 @@ import pandas as pd
 from data.data_preprocessing import split_data
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
-from model.OldDecoder import Decoder
-from model.OldEncoder import Encoder, SparseEncoder
+from model.deprecated.OldDecoder import Decoder
+from model.deprecated.OldEncoder import Encoder, SparseEncoder
 from train.train import train, test
 
 if __name__ == "__main__":

@@ -4,8 +4,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 from data.go_preprocessing import *
 from data.DAGGenerator import DAGGenerator
-from model.OldEncoder import Encoder, BIEncoder, SparseEncoder
-from model.OldDecoder import Decoder, BIDecoder, SparseDecoder
+from model.deprecated.OldEncoder import Encoder, BIEncoder
+from model.deprecated.OldDecoder import Decoder
 from model.Autoencoder import Autoencoder
 
 

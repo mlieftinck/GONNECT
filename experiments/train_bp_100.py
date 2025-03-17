@@ -4,8 +4,8 @@ import torch.optim as optim
 import pandas as pd
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
-from model.OldDecoder import Decoder
-from model.OldEncoder import Encoder, SparseEncoder
+from model.deprecated.OldDecoder import Decoder
+from model.deprecated.OldEncoder import Encoder, SparseEncoder
 from train.train import train
 
 if __name__ == "__main__":

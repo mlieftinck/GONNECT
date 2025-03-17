@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from model.AE_vanilla import Decoder
+from model.deprecated.AE_vanilla import Decoder
 
 
 class VarEncoder(nn.Module):

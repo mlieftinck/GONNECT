@@ -2,8 +2,8 @@ import pandas as pd
 import torch
 
 from data.go_preprocessing import construct_go_bp_layers
-from model.OldDecoder import SparseDecoder, BIDecoder
-from model.OldEncoder import SparseEncoder, BIEncoder
+from model.deprecated.OldDecoder import SparseDecoder, BIDecoder
+from model.deprecated.OldEncoder import SparseEncoder, BIEncoder
 
 
 def make_layers(merge_conditions, dataset_name):
