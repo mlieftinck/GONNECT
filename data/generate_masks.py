@@ -42,6 +42,23 @@ def save_masks(layers, merge_conditions, dataset_name, dtype, model_type="sparse
     print(f"----- Saved {model_type} masks to file -----")
 
 
+def load_masks(module, merge_conditions, dataset_name, model_type):
+    masks = []
+    if (module == "encoder") or (module == "both"):
+        masks.append(torch.load(f"../masks/encoder/{str(merge_conditions)}/{dataset_name}_{model_type}_edge_masks.pt",
+                                weights_only=True))
+        masks.append(torch.load(f"../masks/encoder/{str(merge_conditions)}/{dataset_name}_{model_type}_proxy_masks.pt",
+                                weights_only=True))
+    if (module == "decoder") or (module == "both"):
+        masks.append(torch.load(f"../masks/decoder/{str(merge_conditions)}/{dataset_name}_{model_type}_edge_masks.pt",
+                                weights_only=True))
+        masks.append(torch.load(f"../masks/decoder/{str(merge_conditions)}/{dataset_name}_{model_type}_proxy_masks.pt",
+                                weights_only=True))
+    if len(masks) == 0:
+        return None
+    return masks
+
+
 if __name__ == "__main__":
     merge_conditions = (1, 100)
     dataset_name = "GE_top1k_bp"
