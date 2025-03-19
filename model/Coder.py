@@ -54,9 +54,16 @@ class DenseBICoder(DenseCoder):
         mask_index = 0
         for layer in self.net_layers:
             if isinstance(layer, nn.Linear):
+                # Ensure that devices match
+                if self.proxy_masks[mask_index].device != layer.weight.device:
+                    self.proxy_masks[mask_index] = self.proxy_masks[mask_index].to(layer.weight.device)
+                if self.edge_masks[mask_index].device != layer.weight.device:
+                    self.edge_masks[mask_index] = self.edge_masks[mask_index].to(layer.weight.device)
+
                 # Set weights towards proxies to 1, bias towards proxies to 0
                 layer.weight.data = torch.masked_fill(layer.weight.data, self.proxy_masks[mask_index], value=1)
-                layer.bias.data = torch.masked_fill(layer.bias.data, self.proxy_masks[mask_index].T, value=0)
+                # The [0][:] indexing acts the same as .T, but circumvents warnings about .T being deprecated
+                layer.bias.data = torch.masked_fill(layer.bias.data, self.proxy_masks[mask_index][0][:], value=0)
                 # Set weights without edges to 0
                 layer.weight.data = torch.masked_fill(layer.weight.data, self.edge_masks[mask_index] == 0, value=0)
                 mask_index += 1

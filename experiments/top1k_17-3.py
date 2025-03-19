@@ -6,6 +6,7 @@ import time
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 
+from data.dag_analysis import print_layers
 from data.data_preprocessing import split_data
 from data.generate_masks import load_masks
 from data.go_preprocessing import construct_go_bp_layers
@@ -19,15 +20,16 @@ if __name__ == "__main__":
     model_type = "sparse"
     biologically_informed = "encoder"
     activation = torch.nn.ReLU()
+    loss_function = torch.nn.MSELoss()
     # GO params
     go_preprocessing = False
     merge_conditions = (1, 10)
-    n_go_layers_used = 100
+    n_go_layers_used = 5
     # Training params
     dataset_name = "GE_top1k_bp"
-    n_samples = 10
-    batch_size = 2
-    n_epochs = 10
+    n_samples = 1000
+    batch_size = 50
+    n_epochs = 100
     learning_rate = 0.001
     momentum = 0.9
     device = "cpu"
@@ -70,9 +72,12 @@ if __name__ == "__main__":
 
     # Model construction
     used_go_layers = go_layers[-min(n_go_layers_used, len(go_layers)):]
+    print_layers(used_go_layers, show_genes=go_preprocessing)
     if (biologically_informed == "encoder") or (biologically_informed == "both"):
         if masks:
-            module_masks = (masks.pop(0), masks.pop(0))
+            # Discard masks of unused GO layers
+            module_masks = (masks.pop(0)[:min(n_go_layers_used - 1, len(go_layers))],
+                            masks.pop(0)[:min(n_go_layers_used - 1, len(go_layers))])
         else:
             module_masks = None
         if model_type == "sparse":
@@ -81,15 +86,18 @@ if __name__ == "__main__":
             encoder = DenseBIEncoder(used_go_layers, activation, dtype, masks=module_masks)
     else:
         encoder = Encoder(used_go_layers, activation, dtype)
+
     if (biologically_informed == "decoder") or (biologically_informed == "both"):
         if masks:
-            module_masks = (masks.pop(0), masks.pop(0))
+            # Discard masks of unused GO layers
+            module_masks = (masks.pop(0)[-min(n_go_layers_used - 1, len(go_layers)):],
+                            masks.pop(0)[-min(n_go_layers_used - 1, len(go_layers)):])
         else:
             module_masks = None
         if model_type == "sparse":
-            decoder = SparseBIDecoder(used_go_layers, activation, dtype, masks=(masks.pop(0), masks.pop(0)))
+            decoder = SparseBIDecoder(used_go_layers, activation, dtype, masks=module_masks)
         else:
-            decoder = DenseBIDecoder(used_go_layers, activation, dtype, masks=(masks.pop(0), masks.pop(0)))
+            decoder = DenseBIDecoder(used_go_layers, activation, dtype, masks=module_masks)
     else:
         decoder = Decoder(used_go_layers, activation, dtype)
 
@@ -102,9 +110,9 @@ if __name__ == "__main__":
     epoch_losses = []
     t_start = time.time()
     for epoch in range(n_epochs):  # loop over the dataset multiple times
-        train_loss = train(trainloader, model, optimizer, device=device)
+        train_loss = train(trainloader, model, optimizer, loss_fn=loss_function, device=device)
         print(f"Train loss after epoch {epoch + 1}:\t{train_loss}")
-        test_loss = test(testloader, model, device=device)
+        test_loss = test(testloader, model, loss_fn=loss_function, device=device)
         print(f"Test  loss after epoch {epoch + 1}:\t{test_loss}")
         epoch_losses.append([train_loss.item(), test_loss.item()])
     t_end = time.time() - t_start
@@ -116,7 +124,7 @@ if __name__ == "__main__":
 
     # Plot train and test loss
     plt.plot(epoch_losses)
-    plt.title(f"Loss for {model_type} BI-module: {biologically_informed} (n = {len(trainloader)})")
+    plt.title(f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(n_samples * data_split)})")
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.legend(["train", "test"])
