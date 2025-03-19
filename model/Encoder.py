@@ -23,7 +23,7 @@ class Encoder(DenseCoder):
 
 
 class DenseBIEncoder(DenseBICoder):
-    def __init__(self, go_layers, activation, dtype, masks=None):
+    def __init__(self, go_layers, activation, dtype, masks=None, soft_links=False):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
         go_layers = list(reversed(go_layers))
         super(DenseBIEncoder, self).__init__(go_layers, activation, dtype, masks)
@@ -39,8 +39,9 @@ class DenseBIEncoder(DenseBICoder):
             if isinstance(layer, nn.Linear):
                 nn.init.kaiming_normal_(layer.weight)
 
-        # Mask weights using proxy and edge masks
-        self.mask_weights()
+        if not soft_links:
+            # Mask weights using proxy and edge masks
+            self.mask_weights()
 
     def _create_edge_masks(self):
         """Returns a list of dense 2D boolean tensors. Each tensor functions as an adjacency matrix between network layers, derived from GO."""
