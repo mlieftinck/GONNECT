@@ -26,7 +26,7 @@ class DenseBIEncoder(DenseBICoder):
     def __init__(self, go_layers, activation, dtype, masks=None, soft_links=False):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
         go_layers = list(reversed(go_layers))
-        super(DenseBIEncoder, self).__init__(go_layers, activation, dtype, masks)
+        super(DenseBIEncoder, self).__init__(go_layers, activation, dtype, masks, soft_links)
 
         # Optionally add activation after final linear layer
         pass
@@ -39,8 +39,8 @@ class DenseBIEncoder(DenseBICoder):
             if isinstance(layer, nn.Linear):
                 nn.init.kaiming_normal_(layer.weight)
 
-        if not soft_links:
-            # Mask weights using proxy and edge masks
+        # Mask weights using proxy and edge masks, if soft links are disabled
+        if not self.soft_links:
             self.mask_weights()
 
     def _create_edge_masks(self):

@@ -13,7 +13,7 @@ def loss_kl_divergence(inputs, outputs, net):
     return ((inputs - outputs) ** 2).sum() + net.encoder.kl
 
 
-def train(train_loader, net, optimizer, loss_fn=F.mse_loss, device="cpu"):
+def train(train_loader, net, optimizer, loss_fn, device="cpu"):
     """Trains variational autoencoder network for one epoch in batches.
     Args:
         train_loader: Data loader for training set.
@@ -39,7 +39,7 @@ def train(train_loader, net, optimizer, loss_fn=F.mse_loss, device="cpu"):
         if loss_fn == "kl":
             loss = loss_kl_divergence(inputs, outputs, net)
         else:
-            loss = loss_fn(outputs, inputs)
+            loss = loss_fn(outputs, inputs, model=net)
         loss.backward()
 
         # Force gradients (optional as weight masking should be sufficient)
@@ -57,7 +57,7 @@ def train(train_loader, net, optimizer, loss_fn=F.mse_loss, device="cpu"):
     return avg_loss / len(train_loader)
 
 
-def test(test_loader, net, loss_fn=F.mse_loss, device="cpu"):
+def test(test_loader, net, loss_fn, device="cpu"):
     net.to(device)
     avg_loss = 0
 
@@ -69,7 +69,7 @@ def test(test_loader, net, loss_fn=F.mse_loss, device="cpu"):
 
             # Forward pass
             outputs = net(inputs)
-            loss = loss_fn(outputs, inputs)
+            loss = loss_fn(outputs, inputs, model=net)
 
             # keep track of loss and accuracy
             avg_loss += loss

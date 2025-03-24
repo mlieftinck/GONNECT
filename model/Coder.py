@@ -37,7 +37,7 @@ class DenseCoder(nn.Module):
 class DenseBICoder(DenseCoder):
     """Base class for shared functionality between masked dense encoder and decoder."""
 
-    def __init__(self, go_layers, activation, dtype, masks):
+    def __init__(self, go_layers, activation, dtype, masks, soft_links):
         super(DenseBICoder, self).__init__(go_layers, activation, dtype)
 
         # Initialize biologically-informed masks
@@ -47,6 +47,8 @@ class DenseBICoder(DenseCoder):
         else:
             self.proxy_masks = self._create_proxy_masks()
             self.edge_masks = self._create_edge_masks()
+
+        self.soft_links = soft_links
 
     def mask_weights(self):
         """Using the internal dense mask matrices, mask the dense weights and biases after each training step."""

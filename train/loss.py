@@ -6,6 +6,10 @@ from model.Decoder import Decoder, DenseBIDecoder
 from model.Encoder import DenseBIEncoder
 
 
+def mse_loss(x, y, **kwargs):
+    # Wrapper method to allow additional arguments through **kwargs, required for different loss functions
+    return torch.nn.MSELoss()(x, y)
+
 def mse_loss_soft_link_sum(x, y, model: Autoencoder):
     mse_loss = torch.nn.MSELoss()(x, y)
     soft_weight_sum = 0

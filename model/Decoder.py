@@ -22,7 +22,7 @@ class Decoder(DenseCoder):
 
 class DenseBIDecoder(DenseBICoder):
     def __init__(self, go_layers, activation, dtype, masks=None, soft_links=False):
-        super(DenseBIDecoder, self).__init__(go_layers, activation, dtype, masks)
+        super(DenseBIDecoder, self).__init__(go_layers, activation, dtype, masks, soft_links)
 
         # Optionally add activation after final linear layer
         pass
@@ -35,8 +35,8 @@ class DenseBIDecoder(DenseBICoder):
             if isinstance(layer, nn.Linear):
                 nn.init.kaiming_normal_(layer.weight)
 
-        if not soft_links:
-            # Mask weights using proxy and edge masks
+        # Mask weights using proxy and edge masks, if soft links are disabled
+        if not self.soft_links:
             self.mask_weights()
 
     def _create_edge_masks(self):
