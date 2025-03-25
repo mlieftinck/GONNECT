@@ -35,9 +35,7 @@ class SparseLinear(nn.Module):
 
     def reset_parameters(self) -> None:
         """Adapted from nn.Linear to be able to handle sparsity."""
-        weight_values = self.weight.data.coalesce().values()
         self.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        self.weight = nn.Parameter(torch.sparse_coo_tensor(self.weight.indices(), weight_values))
         if self.bias is not None:
             fan_in, _ = self._calculate_fan_in_and_fan_out(self.weight)
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0

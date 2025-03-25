@@ -11,3 +11,7 @@ class Autoencoder(nn.Module):
         z = self.encoder(x)
         y = self.decoder(z)
         return y
+
+    def mask_weights(self):
+        self.encoder.mask_weights()
+        self.decoder.mask_weights()

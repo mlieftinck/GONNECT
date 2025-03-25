@@ -36,20 +36,13 @@ def train(train_loader, net, optimizer, loss_fn, device="cpu"):
         outputs = net(inputs)
 
         # Backward pass
-        if loss_fn == "kl":
-            loss = loss_kl_divergence(inputs, outputs, net)
-        else:
-            loss = loss_fn(outputs, inputs, model=net)
+        loss = loss_fn(outputs, inputs, model=net)
         loss.backward()
-
-        # Force gradients (optional as weight masking should be sufficient)
-        if isinstance(net.encoder, BIEncoder):
-            net.encoder.mask_gradients()
 
         optimizer.step()
 
         # Force biologically-informed weights
-        net.encoder.mask_weights()
+        net.mask_weights()
 
         # keep track of loss and accuracy
         avg_loss += loss

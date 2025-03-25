@@ -10,6 +10,7 @@ def mse_loss(x, y, **kwargs):
     # Wrapper method to allow additional arguments through **kwargs, required for different loss functions
     return torch.nn.MSELoss()(x, y)
 
+
 def mse_loss_soft_link_sum(x, y, model: Autoencoder):
     mse_loss = torch.nn.MSELoss()(x, y)
     soft_weight_sum = 0
@@ -17,6 +18,7 @@ def mse_loss_soft_link_sum(x, y, model: Autoencoder):
         soft_weight_sum += soft_link_sum(model.encoder)
     if hasattr(model.decoder, "edge_masks"):
         soft_weight_sum += soft_link_sum(model.decoder)
+    print("soft_weight_sum: ", soft_weight_sum)
     return mse_loss + soft_weight_sum
 
 

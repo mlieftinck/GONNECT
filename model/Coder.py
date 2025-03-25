@@ -62,10 +62,13 @@ class DenseBICoder(DenseCoder):
                 if self.edge_masks[mask_index].device != layer.weight.device:
                     self.edge_masks[mask_index] = self.edge_masks[mask_index].to(layer.weight.device)
 
-                # Set weights towards proxies to 1, bias towards proxies to 0
+                # Set weights towards proxies to 1, bias of proxies to 0
                 layer.weight.data = torch.masked_fill(layer.weight.data, self.proxy_masks[mask_index], value=1)
-                # The [0][:] indexing acts the same as .T, but circumvents warnings about .T being deprecated
-                layer.bias.data = torch.masked_fill(layer.bias.data, self.proxy_masks[mask_index][0][:], value=0)
+                # Set bias of proxy terms to 0
+                for i in range(len(layer.bias.data)):
+                    if self.proxy_masks[mask_index][i]:
+                        layer.bias.data[i] = 0
+
                 # Set weights without edges to 0
                 layer.weight.data = torch.masked_fill(layer.weight.data, self.edge_masks[mask_index] == 0, value=0)
                 mask_index += 1
@@ -148,7 +151,9 @@ class SparseCoder(nn.Module):
                         layer.weight.data = layer.weight.data.coalesce()
                         layer.weight.data.values()[j] = 1
                 # Mask ProxyTerm bias
-                layer.bias.data = torch.masked_fill(layer.bias.data, proxy_mask.T, value=0)
+                for i in range(len(layer.bias.data)):
+                    if self.proxy_masks[mask_index][i]:
+                        layer.bias.data[i] = 0
                 mask_index += 1
 
     def _create_proxy_masks(self):

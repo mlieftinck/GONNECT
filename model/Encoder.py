@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from model.Coder import DenseCoder, DenseBICoder, SparseCoder
+from model.SparseLinear import SparseLinear
 
 
 class Encoder(DenseCoder):
@@ -19,7 +20,9 @@ class Encoder(DenseCoder):
         # (Re)initialize all weights
         for layer in self.net_layers:
             if isinstance(layer, nn.Linear):
-                nn.init.kaiming_normal_(layer.weight)
+                # Option for initialization other than standard (Kaiming uniform)
+                pass
+                # nn.init.kaiming_normal_(layer.weight)
 
 
 class DenseBIEncoder(DenseBICoder):
@@ -37,7 +40,9 @@ class DenseBIEncoder(DenseBICoder):
         # (Re)initialize all weights
         for layer in self.net_layers:
             if isinstance(layer, nn.Linear):
-                nn.init.kaiming_normal_(layer.weight)
+                # Option for initialization other than standard (Kaiming uniform)
+                pass
+                # nn.init.kaiming_normal_(layer.weight)
 
         # Mask weights using proxy and edge masks, if soft links are disabled
         if not self.soft_links:
@@ -76,8 +81,9 @@ class SparseBIEncoder(SparseCoder):
 
         # (Re)initialize all weights
         for layer in self.net_layers:
-            if isinstance(layer, nn.Linear):
-                nn.init.kaiming_normal_(layer.weight)
+            if isinstance(layer, SparseLinear):
+                # Kaiming uniform initialization for SparseTensors is implemented in the SparseLinear class, no need to re-initialize
+                pass
 
         # Mask weights using proxy masks
         self.mask_weights()
