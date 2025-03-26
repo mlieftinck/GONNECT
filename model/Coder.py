@@ -62,15 +62,18 @@ class DenseBICoder(DenseCoder):
                 if self.edge_masks[mask_index].device != layer.weight.device:
                     self.edge_masks[mask_index] = self.edge_masks[mask_index].to(layer.weight.device)
 
-                # Set weights towards proxies to 1, bias of proxies to 0
-                layer.weight.data = torch.masked_fill(layer.weight.data, self.proxy_masks[mask_index], value=1)
+                # Combine edge and proxy masks to set BI-weights to proxies
+                proxy_weight_mask = self.edge_masks[mask_index] * self.proxy_masks[mask_index]
+                # Set weights towards proxies to 1
+                layer.weight.data = torch.masked_fill(layer.weight.data, proxy_weight_mask, value=1)
                 # Set bias of proxy terms to 0
                 for i in range(len(layer.bias.data)):
                     if self.proxy_masks[mask_index][i]:
                         layer.bias.data[i] = 0
 
-                # Set weights without edges to 0
-                layer.weight.data = torch.masked_fill(layer.weight.data, self.edge_masks[mask_index] == 0, value=0)
+                # Set weights without edges to 0, unless soft links is enabled
+                if not self.soft_links:
+                    layer.weight.data = torch.masked_fill(layer.weight.data, self.edge_masks[mask_index] == 0, value=0)
                 mask_index += 1
 
     def mask_gradients(self):

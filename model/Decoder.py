@@ -40,9 +40,8 @@ class DenseBIDecoder(DenseBICoder):
                 pass
                 # nn.init.kaiming_normal_(layer.weight)
 
-        # Mask weights using proxy and edge masks, if soft links are disabled
-        if not self.soft_links:
-            self.mask_weights()
+        # Mask weights using proxy and edge masks
+        self.mask_weights()
 
     def _create_edge_masks(self):
         """Returns a list of dense 2D boolean tensors. Each tensor functions as an adjacency matrix between network layers, derived from GO."""
