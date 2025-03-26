@@ -13,7 +13,7 @@ from data.go_preprocessing import construct_go_bp_layers
 from model.Autoencoder import Autoencoder
 from model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
 from model.Encoder import SparseBIEncoder, Encoder, DenseBIEncoder
-from train.loss import mse_loss, mse_loss_soft_link_sum
+from train.loss import MSE, MSE_Soft_Link_Sum
 from train.train import train, test
 
 if __name__ == "__main__":
@@ -22,8 +22,7 @@ if __name__ == "__main__":
     biologically_informed = "encoder"
     soft_links = True
     activation = torch.nn.ReLU()
-    # loss_function = mse_loss
-    loss_function = mse_loss_soft_link_sum
+    loss_function = MSE_Soft_Link_Sum()
     # GO params
     go_preprocessing = False
     merge_conditions = (1, 10)
@@ -129,6 +128,6 @@ if __name__ == "__main__":
     plt.plot(epoch_losses)
     plt.title(f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(n_samples * data_split)})")
     plt.xlabel("Epoch")
-    plt.ylabel("MSE Loss")
+    plt.ylabel(loss_function.name)
     plt.legend(["train", "test"])
     plt.show()
