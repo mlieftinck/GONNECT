@@ -26,24 +26,31 @@ class MSE_Soft_Link_Sum(nn.Module):
     def forward(self, x, y, model: Autoencoder, alpha=1.0, **kwargs):
         mse = nn.functional.mse_loss(x, y)
         soft_weight_sum = 0
+        n_soft_weights = 0
         if hasattr(model.encoder, "edge_masks"):
-            soft_weight_sum += soft_link_sum(model.encoder)
+            layer_sum, layer_n = soft_link_sum(model.encoder)
+            soft_weight_sum += layer_sum
+            n_soft_weights += layer_n
         if hasattr(model.decoder, "edge_masks"):
-            soft_weight_sum += soft_link_sum(model.decoder)
-        # print("soft_weight_sum: ", soft_weight_sum)
-        return mse + alpha * soft_weight_sum
+            layer_sum, layer_n = soft_link_sum(model.encoder)
+            soft_weight_sum += layer_sum
+            n_soft_weights += layer_n
+        print("soft_weight_sum: ", soft_weight_sum)
+        return mse + alpha * (soft_weight_sum / n_soft_weights)
 
 
 def soft_link_sum(net):
     """For a given network (encoder or decoder), return the sum of absolute values of the weights that are considered soft links because they are masked by the edge mask of the network."""
     soft_weight_sum = 0
     mask_index = 0
+    n = 0
     for layer in net.net_layers:
         if isinstance(layer, nn.Linear):
             # For each linear layer of the network, sum the absolute values of the masked weights
             soft_weight_sum += torch.sum(layer.weight.abs() * ~net.edge_masks[mask_index])
+            n += torch.sum(~net.edge_masks[mask_index])
             mask_index += 1
-    return soft_weight_sum
+    return soft_weight_sum, n
 
 
 if __name__ == '__main__':
@@ -66,13 +73,13 @@ if __name__ == '__main__':
     ae = Autoencoder(encoder, decoder)
     x = torch.Tensor([1, 2, 3]).requires_grad_()
     print(
-        f"Test result should be 15. Result: {loss_fn(x, torch.Tensor([1, 2, 3]), ae)}")
+        f"Test result should be 15/3. Result: {loss_fn(x, torch.Tensor([1, 2, 3]), ae)}")
     print(
-        f"Test result should be 16. Result: {loss_fn(x, torch.Tensor([0, 1, 2]), ae)}")
+        f"Test result should be 1+15/3. Result: {loss_fn(x, torch.Tensor([0, 1, 2]), ae)}")
     decoder = DenseBIDecoder(layers, nn.ReLU(), torch.float64, masks)
     decoder.net_layers[0].weight.data = encoder_weights
     ae = Autoencoder(encoder, decoder)
     print(
-        f"Test result should be 30. Result: {loss_fn(x, torch.Tensor([1, 2, 3]), ae)}")
+        f"Test result should be 30/6. Result: {loss_fn(x, torch.Tensor([1, 2, 3]), ae)}")
     print(
-        f"Test result should be 31. Result: {loss_fn(x, torch.Tensor([0, 1, 2]), ae)}")
+        f"Test result should be 1+30/6. Result: {loss_fn(x, torch.Tensor([0, 1, 2]), ae)}")
