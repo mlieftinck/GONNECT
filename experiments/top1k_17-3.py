@@ -20,25 +20,25 @@ if __name__ == "__main__":
     # Model params
     model_type = "dense"
     biologically_informed = "encoder"
-    soft_links = True
+    soft_links = False
     activation = torch.nn.ReLU()
-    loss_function = MSE_Soft_Link_Sum()
+    loss_function = MSE()
     # GO params
-    go_preprocessing = False
-    merge_conditions = (1, 10)
-    n_go_layers_used = 5
+    go_preprocessing = True
+    merge_conditions = (1, 30)
+    n_go_layers_used = 7
     # Training params
     dataset_name = "GE_top1k_bp"
-    n_samples = 1000
-    batch_size = 50
-    n_epochs = 100
-    learning_rate = 0.001
+    n_samples = 10000
+    batch_size = 100
+    n_epochs = 200
+    learning_rate = 0.005
     momentum = 0.9
     device = "cpu"
     # Model storage params
     save_weights = False
     load_weights = False
-    weights_path = "17-3"
+    weights_path = ""
     # Additional params
     data_split = 0.7
     seed = 1
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # Data processing
     data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(2 + min(n_samples, 11499)),
                        compression="gzip").sort_values("gene id")
-    train_set, validation_set, test_set = split_data(data, data_split, seed)
+    train_set, validation_set, test_set = split_data(data, n_nan_cols, data_split, seed)
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
     data_torch = TensorDataset(torch.from_numpy(np.transpose(data_np)))
     dataloader = DataLoader(data_torch, batch_size=min(n_samples, batch_size), shuffle=False)
@@ -113,13 +113,15 @@ if __name__ == "__main__":
     t_start = time.time()
     for epoch in range(n_epochs):  # loop over the dataset multiple times
         train_loss = train(trainloader, model, optimizer, loss_fn=loss_function, device=device)
-        print(f"Train loss after epoch {epoch + 1}:\t{train_loss}")
         test_loss = test(testloader, model, loss_fn=loss_function, device=device)
-        print(f"Test  loss after epoch {epoch + 1}:\t{test_loss}")
+        print(f"Train loss after epoch {epoch + 1}:\t{train_loss}\t\t"
+              f"Test loss after epoch {epoch + 1}:\t{test_loss}")
         epoch_losses.append([train_loss.item(), test_loss.item()])
     t_end = time.time() - t_start
     print(f"Total training time: {t_end // 60:.0f}m {t_end % 60:.0f}s")
 
+    # Debug: show network weights as colored grid
+    # plt.imshow(encoder.net_layers._modules["0"].weight.data, cmap="RdYlGn")
     if save_weights:
         torch.save(model.state_dict(), f"../saved_weights/{dataset_name}/{weights_path}.pt")
         print(f"\n----- Saved weights to file ({weights_path}) -----")

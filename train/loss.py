@@ -35,7 +35,8 @@ class MSE_Soft_Link_Sum(nn.Module):
             layer_sum, layer_n = soft_link_sum(model.encoder)
             soft_weight_sum += layer_sum
             n_soft_weights += layer_n
-        print("soft_weight_sum: ", soft_weight_sum)
+        # Debug
+        # print("soft_weight_sum: ", soft_weight_sum)
         return mse + alpha * (soft_weight_sum / n_soft_weights)
 
 

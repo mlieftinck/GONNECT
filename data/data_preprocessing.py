@@ -2,6 +2,18 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+from data.GeneTerm import GeneTerm
+from data.go_preprocessing import link_genes_to_go_by_namespace
+
+
+def list_ids_in_go_per_namespace(go: dict, namespace: str):
+    link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", namespace)
+    linked_ids = []
+    for term in go.values():
+        if isinstance(term, GeneTerm):
+            linked_ids.append(term.item_id)
+    return linked_ids
+
 
 def read_gene_names_to_uniprot_ids(path: str):
     with open(path, "r") as f:
@@ -52,11 +64,11 @@ def save_list(a, path: str):
         f.write("\n".join(a))
 
 
-def split_data(data, split=0.7, seed=1):
+def split_data(data, n_nan_cols, split=0.7, seed=1):
     """Split the given dataframe in train, validation and test sets. The split argument sets the training fraction, the remainder is split 50/50 between validation and test."""
     validation_test_split = 0.5
     # Strip any non-sample column before making the splits
-    cols = [col for col in data.columns if col[:2] == "ID"]
+    cols = list(data.columns[n_nan_cols:])
     train_cols, remaining_cols = train_test_split(cols, train_size=split, random_state=seed)
     validation_cols, test_cols = train_test_split(remaining_cols, train_size=validation_test_split, random_state=seed)
     train_set = data[train_cols]

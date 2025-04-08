@@ -63,7 +63,7 @@ if __name__ == "__main__":
     decoder_layers = [torch.zeros(len(encoder_layers[0])), torch.zeros(75), torch.zeros(len(encoder_layers[-1]))]
 
     # Prepare data splits and pandas to torch conversion
-    train_set, validation_set, test_set = split_data(data, split, seed)
+    train_set, validation_set, test_set = split_data(data, n_nan_cols, split, seed)
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
     data_torch = TensorDataset(torch.from_numpy(np.transpose(data_np)))
     dataloader = DataLoader(data_torch, batch_size=min(n_samples, batch_size), shuffle=False)
