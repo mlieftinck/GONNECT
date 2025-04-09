@@ -68,6 +68,17 @@ def split_data(data, n_nan_cols, split=0.7, seed=1):
     """Split the given dataframe in train, validation and test sets. The split argument sets the training fraction, the remainder is split 50/50 between validation and test."""
     validation_test_split = 0.5
     # Strip any non-sample column before making the splits
+    gene_expression = data.copy()
+    gene_expression = gene_expression[gene_expression.columns[5:]]
+    train_set, remaining_set = train_test_split(gene_expression, train_size=split, random_state=seed)
+    validation_set, test_set = train_test_split(remaining_set, train_size=validation_test_split, random_state=seed)
+    return train_set, validation_set, test_set
+
+
+def split_data_deprecated(data, n_nan_cols, split=0.7, seed=1):
+    """Split the given dataframe in train, validation and test sets. The split argument sets the training fraction, the remainder is split 50/50 between validation and test."""
+    validation_test_split = 0.5
+    # Strip any non-sample column before making the splits
     cols = list(data.columns[n_nan_cols:])
     train_cols, remaining_cols = train_test_split(cols, train_size=split, random_state=seed)
     validation_cols, test_cols = train_test_split(remaining_cols, train_size=validation_test_split, random_state=seed)
