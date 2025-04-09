@@ -6,10 +6,10 @@ from model.SparseLinear import SparseLinear
 
 
 class Encoder(DenseCoder):
-    def __init__(self, go_layers, activation, dtype):
+    def __init__(self, go_layers, activation_fn, dtype):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
         go_layers = list(reversed(go_layers))
-        super(Encoder, self).__init__(go_layers, activation, dtype)
+        super(Encoder, self).__init__(go_layers, activation_fn, dtype)
 
         # Optionally add activation after final linear layer
         pass
@@ -26,10 +26,10 @@ class Encoder(DenseCoder):
 
 
 class DenseBIEncoder(DenseBICoder):
-    def __init__(self, go_layers, activation, dtype, masks=None, soft_links=False):
+    def __init__(self, go_layers, activation_fn, dtype, masks=None, soft_links=False):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
         go_layers = list(reversed(go_layers))
-        super(DenseBIEncoder, self).__init__(go_layers, activation, dtype, masks, soft_links)
+        super(DenseBIEncoder, self).__init__(go_layers, activation_fn, dtype, masks, soft_links)
 
         # Optionally add activation after final linear layer
         pass
@@ -67,10 +67,10 @@ class DenseBIEncoder(DenseBICoder):
 
 
 class SparseBIEncoder(SparseCoder):
-    def __init__(self, go_layers, activation, dtype, masks=None):
+    def __init__(self, go_layers, activation_fn, dtype, masks=None):
         # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
         go_layers = list(reversed(go_layers))
-        super(SparseBIEncoder, self).__init__(go_layers, activation, dtype, masks)
+        super(SparseBIEncoder, self).__init__(go_layers, activation_fn, dtype, masks)
 
         # Optionally add activation after final linear layer
         pass

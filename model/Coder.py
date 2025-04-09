@@ -8,19 +8,23 @@ from model.SparseLinear import SparseLinear
 class DenseCoder(nn.Module):
     """Base class for shared functionality between dense encoder and decoder."""
 
-    def __init__(self, go_layers, activation, dtype):
+    def __init__(self, go_layers, activation_fn, dtype):
         super(DenseCoder, self).__init__()
 
         # Initialize architecture (conversion to ModuleList is passed down to implementation)
         self.go_layers = go_layers
-        self.activation = activation
+        self.activation_fn = activation_fn
         network_layers = []
         for i in range(len(self.go_layers) - 1):
             network_layers.append(nn.Linear(len(self.go_layers[i]), len(self.go_layers[i + 1]), dtype=dtype))
             if i < len(self.go_layers) - 2:
-                network_layers.append(self.activation)
+                network_layers.append(self.activation_fn())
         # ModuleList conversion should appear here, but by passing that down it allows for additional activations to be added
         self.net_layers = network_layers
+
+        # Hooks to store activations during forward pass
+        self.activations = {}
+        self._register_hooks()
 
     def forward(self, x):
         for layer in self.net_layers:
@@ -33,12 +37,23 @@ class DenseCoder(nn.Module):
     def mask_gradients(self):
         return
 
+    def _register_hooks(self):
+        for idx, layer in enumerate(self.net_layers):
+            if isinstance(layer, nn.Module):
+                layer.register_forward_hook(self._get_activation_hook(f"layer_{idx}"))
+
+    def _get_activation_hook(self, name):
+        def hook(module, x, output):
+            self.activations[name] = output.detach().clone()
+
+        return hook
+
 
 class DenseBICoder(DenseCoder):
     """Base class for shared functionality between masked dense encoder and decoder."""
 
-    def __init__(self, go_layers, activation, dtype, masks, soft_links):
-        super(DenseBICoder, self).__init__(go_layers, activation, dtype)
+    def __init__(self, go_layers, activation_fn, dtype, masks, soft_links):
+        super(DenseBICoder, self).__init__(go_layers, activation_fn, dtype)
 
         # Initialize biologically-informed masks
         if masks:
@@ -109,7 +124,7 @@ class DenseBICoder(DenseCoder):
 class SparseCoder(nn.Module):
     """Base class for shared functionality between sparse encoder and decoder."""
 
-    def __init__(self, go_layers, activation, dtype, masks):
+    def __init__(self, go_layers, activation_fn, dtype, masks):
         super(SparseCoder, self).__init__()
         self.go_layers = go_layers
 
@@ -123,14 +138,18 @@ class SparseCoder(nn.Module):
 
         # Initialize architecture (conversion to ModuleList is passed down to implementation)
         network_layers = []
-        self.activation = activation
+        self.activation_fn = activation_fn
         for i in range(len(self.go_layers) - 1):
             network_layers.append(
                 SparseLinear(len(self.go_layers[i]), len(self.go_layers[i + 1]), self.edge_masks[i], dtype=dtype))
             if i < len(self.go_layers) - 2:
-                network_layers.append(self.activation)
+                network_layers.append(self.activation_fn())
         # ModuleList conversion should appear here, but by passing that down it allows for additional activations to be added
         self.net_layers = network_layers
+
+        # Hooks to store activations during forward pass
+        self.activations = {}
+        self._register_hooks()
 
     def forward(self, x):
         for layer in self.net_layers:
@@ -174,3 +193,14 @@ class SparseCoder(nn.Module):
     def _create_edge_masks(self):
         """Implemented in Encoder/Decoder (sub)classes"""
         return [torch.empty() for _ in range(len(self.go_layers))]
+
+    def _register_hooks(self):
+        for idx, layer in enumerate(self.net_layers):
+            if isinstance(layer, nn.Module):
+                layer.register_forward_hook(self._get_activation_hook(f"layer_{idx}"))
+
+    def _get_activation_hook(self, name):
+        def hook(module, x, output):
+            self.activations[name] = output.detach().clone()
+
+        return hook

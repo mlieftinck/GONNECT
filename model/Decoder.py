@@ -6,8 +6,8 @@ from model.SparseLinear import SparseLinear
 
 
 class Decoder(DenseCoder):
-    def __init__(self, go_layers, activation, dtype):
-        super(Decoder, self).__init__(go_layers, activation, dtype)
+    def __init__(self, go_layers, activation_fn, dtype):
+        super(Decoder, self).__init__(go_layers, activation_fn, dtype)
 
         # Optionally add activation after final linear layer
         pass
@@ -24,8 +24,8 @@ class Decoder(DenseCoder):
 
 
 class DenseBIDecoder(DenseBICoder):
-    def __init__(self, go_layers, activation, dtype, masks=None, soft_links=False):
-        super(DenseBIDecoder, self).__init__(go_layers, activation, dtype, masks, soft_links)
+    def __init__(self, go_layers, activation_fn, dtype, masks=None, soft_links=False):
+        super(DenseBIDecoder, self).__init__(go_layers, activation_fn, dtype, masks, soft_links)
 
         # Optionally add activation after final linear layer
         pass
@@ -63,8 +63,8 @@ class DenseBIDecoder(DenseBICoder):
 
 
 class SparseBIDecoder(SparseCoder):
-    def __init__(self, go_layers, activation, dtype, masks=None):
-        super(SparseBIDecoder, self).__init__(go_layers, activation, dtype, masks)
+    def __init__(self, go_layers, activation_fn, dtype, masks=None):
+        super(SparseBIDecoder, self).__init__(go_layers, activation_fn, dtype, masks)
 
         # Optionally add activation after final linear layer
         pass
