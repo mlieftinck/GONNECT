@@ -1,7 +1,8 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
-import torch.nn.functional as F
+
+from data.data_preprocessing import split_data
 from data.go_preprocessing import *
 from data.DAGGenerator import DAGGenerator
 from model.deprecated.OldEncoder import Encoder, BIEncoder
@@ -11,6 +12,20 @@ from model.Autoencoder import Autoencoder
 
 def loss_kl_divergence(inputs, outputs, net):
     return ((inputs - outputs) ** 2).sum() + net.encoder.kl
+
+
+def make_data_splits(data, n_nan_cols, n_samples, batch_size, data_split, seed):
+    train_set, validation_set, test_set = split_data(data, n_nan_cols, data_split, seed)
+    data_np = data.iloc[:, n_nan_cols:].to_numpy()
+    data_torch = TensorDataset(torch.from_numpy(data_np))
+    dataloader = DataLoader(data_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    train_torch = TensorDataset(torch.from_numpy(train_set.to_numpy()))
+    validation_torch = TensorDataset(torch.from_numpy(validation_set.to_numpy()))
+    test_torch = TensorDataset(torch.from_numpy(test_set.to_numpy()))
+    trainloader = DataLoader(train_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    validationloader = DataLoader(validation_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    testloader = DataLoader(test_torch, batch_size=min(n_samples, batch_size), shuffle=False)
+    return dataloader, trainloader, validationloader, testloader
 
 
 def train(train_loader, net, optimizer, loss_fn, device="cpu"):
@@ -68,6 +83,46 @@ def test(test_loader, net, loss_fn, device="cpu"):
             avg_loss += loss
 
     return avg_loss / len(test_loader)
+
+
+def train_with_validation(max_epochs, trainloader, testloader, validationloader, net, optimizer, loss_function,
+                          patience, device="cpu"):
+    epoch_losses = []
+    t_start = time.time()
+    for epoch in range(max_epochs):  # loop over the dataset multiple times
+        train_loss = train(trainloader, net, optimizer, loss_fn=loss_function, device=device)
+        validation_loss = test(validationloader, net, loss_fn=loss_function, device=device)
+        test_loss = test(testloader, net, loss_fn=loss_function, device=device)
+        print(f"Train loss after epoch {epoch + 1}:\t{train_loss}\t\t"
+              f"Validation loss after epoch {epoch + 1}:\t{validation_loss}\t\t"
+              f"Test loss after epoch {epoch + 1}:\t{test_loss}")
+        epoch_losses.append([train_loss.item(), validation_loss.item(), test_loss.item()])
+
+        # Initialize early stopping variables
+        if epoch == 0:
+            best_validation_loss = validation_loss.item()
+            patience_count = 0
+
+        # Early stopping evaluation
+        if validation_loss.item() < best_validation_loss:
+            best_validation_loss = validation_loss.item()
+            patience_count = 0
+        else:
+            patience_count += 1
+            if patience_count >= patience:
+                break
+
+    t_end = time.time() - t_start
+    print(f"Total training time: {t_end // 60:.0f}m {t_end % 60:.0f}s")
+
+    return epoch_losses
+
+
+def save_training_losses(epoch_losses, file_path):
+    with open(file_path, "w") as f:
+        f.write("Train loss\tValidation loss\tTest loss\n")
+        for epoch_loss in epoch_losses:
+            f.write(f"{epoch_loss[0]}\t{epoch_loss[1]}\t{epoch_loss[3]}\n")
 
 
 if __name__ == "__main__":
