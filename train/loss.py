@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from model.Autoencoder import Autoencoder
+from model.Coder import SparseCoder
 from model.Decoder import Decoder, DenseBIDecoder
 from model.Encoder import DenseBIEncoder
 
@@ -24,6 +25,9 @@ class MSE_Soft_Link_Sum(nn.Module):
         self.model = model
 
     def forward(self, x, y, model: Autoencoder, alpha=1.0, **kwargs):
+        if isinstance(model.encoder, SparseCoder) or isinstance(model.decoder, SparseCoder):
+            raise Exception("Soft links are not supported for models containing SparseTensors")
+
         mse = nn.functional.mse_loss(x, y)
         soft_weight_sum = 0
         n_soft_weights = 0

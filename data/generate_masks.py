@@ -7,11 +7,13 @@ from model.Decoder import DenseBIDecoder, SparseBIDecoder
 from model.Encoder import DenseBIEncoder, SparseBIEncoder
 
 
-def make_layers(merge_conditions, dataset_name, print_go=True):
+def make_layers(merge_conditions, dataset_name, n_nan_cols=0, print_go=True):
     print("\n----- START: GO preprocessing -----")
-    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=["gene id"],
-                       compression="gzip").sort_values("gene id")
-    genes = list(data["gene id"])
+    # data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=["gene id"],
+    #                    compression="gzip").sort_values("gene id")
+    # genes = list(data["gene id"])
+    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", compression="gzip")
+    genes = list(data.columns[n_nan_cols:])
     layers = construct_go_bp_layers(genes, merge_conditions, print_go=print_go)
     print("----- COMPLETED: GO preprocessing -----")
     return layers
@@ -61,10 +63,11 @@ def load_masks(module, merge_conditions, dataset_name, model_type):
 
 if __name__ == "__main__":
     merge_conditions = (1, 100)
-    dataset_name = "GE_top1k_bp"
+    dataset_name = "TCGA_complete_bp_norm"
+    n_nan_cols = 5
     dtype = torch.float64
 
-    layers = make_layers(merge_conditions, dataset_name)
+    layers = make_layers(merge_conditions, dataset_name, n_nan_cols)
     save_layers(layers, merge_conditions, dataset_name)
     save_masks(layers, merge_conditions, dataset_name, dtype, model_type="sparse")
     save_masks(layers, merge_conditions, dataset_name, dtype, model_type="dense")
