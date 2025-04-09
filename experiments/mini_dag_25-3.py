@@ -8,7 +8,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from data.DAGGenerator import DAGGenerator
 from data.dag_analysis import print_layers, create_layers
-from data.data_preprocessing import split_data
+from data.data_preprocessing import split_data_deprecated
 from data.go_preprocessing import balance_until_convergence, pull_leaves_down
 from model.Autoencoder import Autoencoder
 from model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
@@ -18,11 +18,11 @@ from train.train import train, test
 
 if __name__ == "__main__":
     # Model params
-    model_type = "sparse"
-    biologically_informed = "both"
-    soft_links = True
-    activation = torch.nn.ReLU()
-    loss_function = MSE_Soft_Link_Sum()
+    model_type = "dense"
+    biologically_informed = "decoder"
+    soft_links = False
+    activation = torch.nn.ReLU
+    loss_function = MSE_Soft_Link_Sum() if soft_links else MSE()
     # GO params
     go_preprocessing = False
     merge_conditions = (1, 10)
@@ -46,8 +46,8 @@ if __name__ == "__main__":
     n_nan_cols = 0
 
     # Data processing
-    data = pd.DataFrame(np.random.random((3, n_samples)), columns=list("ID" + str(i) for i in range(n_samples)))
-    train_set, validation_set, test_set = split_data(data, n_nan_cols, data_split, seed)
+    data = pd.DataFrame(np.random.normal(size=(3, n_samples)), columns=list("ID" + str(i) for i in range(n_samples)))
+    train_set, validation_set, test_set = split_data_deprecated(data, n_nan_cols, data_split, seed)
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
     data_torch = TensorDataset(torch.from_numpy(np.transpose(data_np)))
     dataloader = DataLoader(data_torch, batch_size=min(n_samples, batch_size), shuffle=False)

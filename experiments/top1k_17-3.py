@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 
 from data.dag_analysis import print_layers
-from data.data_preprocessing import split_data
+from data.data_preprocessing import split_data_deprecated as split_data
 from data.generate_masks import load_masks
 from data.go_preprocessing import construct_go_bp_layers
 from model.Autoencoder import Autoencoder
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     model_type = "dense"
     biologically_informed = "encoder"
     soft_links = False
-    activation = torch.nn.ReLU()
+    activation = torch.nn.ReLU
     loss_function = MSE()
     # GO params
     go_preprocessing = True

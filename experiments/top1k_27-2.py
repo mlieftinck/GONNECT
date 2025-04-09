@@ -3,11 +3,12 @@ from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import pandas as pd
 
-from data.data_preprocessing import split_data
+from data.data_preprocessing import split_data_deprecated as split_data
 from data.go_preprocessing import *
 from model.Autoencoder import Autoencoder
 from model.deprecated.OldDecoder import Decoder
 from model.deprecated.OldEncoder import Encoder, SparseEncoder
+from train.loss import MSE
 from train.train import train, test
 
 if __name__ == "__main__":
@@ -33,6 +34,7 @@ if __name__ == "__main__":
     data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(n_nan_cols + min(n_samples, 11499)),
                        compression="gzip").sort_values("gene id")
     # Training params
+    loss_fn = MSE()
     n_epochs = 1000
     lr = 1e-4
     momentum = 0
@@ -88,9 +90,9 @@ if __name__ == "__main__":
     epoch_losses = []
     t_start = time.time()
     for epoch in range(epochs):  # loop over the dataset multiple times
-        train_loss = train(trainloader, model, optimizer, device=device)
+        train_loss = train(trainloader, model, optimizer, device=device, loss_fn=loss_fn)
         print(f"Train loss after epoch {epoch + 1}:\t{train_loss}")
-        test_loss = test(testloader, model, device=device)
+        test_loss = test(testloader, model, device=device, loss_fn=loss_fn)
         print(f"Test  loss after epoch {epoch + 1}:\t{test_loss}")
         epoch_losses.append([train_loss.item(), test_loss.item()])
     t_end = time.time() - t_start
