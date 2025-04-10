@@ -8,13 +8,16 @@ from data.DAGGenerator import DAGGenerator
 from model.deprecated.OldEncoder import Encoder, BIEncoder
 from model.deprecated.OldDecoder import Decoder
 from model.Autoencoder import Autoencoder
+from train.loss import MSE
 
 
 def loss_kl_divergence(inputs, outputs, net):
+    """To be used for VAE training..."""
     return ((inputs - outputs) ** 2).sum() + net.encoder.kl
 
 
 def make_data_splits(data, n_nan_cols, n_samples, batch_size, data_split, seed):
+    """Split the data provided fot training into the full, train, validation and test sets, and return them as DataLoader objects."""
     train_set, validation_set, test_set = split_data(data, n_nan_cols, data_split, seed)
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
     data_torch = TensorDataset(torch.from_numpy(data_np))
@@ -29,7 +32,7 @@ def make_data_splits(data, n_nan_cols, n_samples, batch_size, data_split, seed):
 
 
 def train(train_loader, net, optimizer, loss_fn, device="cpu"):
-    """Trains variational autoencoder network for one epoch in batches.
+    """Trains network for one epoch in batches.
     Args:
         train_loader: Data loader for training set.
         net: Neural network model.
@@ -66,9 +69,10 @@ def train(train_loader, net, optimizer, loss_fn, device="cpu"):
 
 
 def test(test_loader, net, loss_fn, device="cpu"):
+    """Test current model performance on a validation or test set. Used to prevent overfitting during training."""
     net.to(device)
     avg_loss = 0
-
+    # No gradient computation needed for forward pass only
     with torch.no_grad():
         # Iterate over batches
         for i, data in enumerate(test_loader):
@@ -87,6 +91,7 @@ def test(test_loader, net, loss_fn, device="cpu"):
 
 def train_with_validation(max_epochs, trainloader, testloader, validationloader, net, optimizer, loss_function,
                           patience, device="cpu"):
+    """Function to execute the full training process. The provided model is trained on the train set, and evaluated on both validation and test sets. The patience argument is used for early stopping based on performance on the validation set."""
     epoch_losses = []
     t_start = time.time()
     for epoch in range(max_epochs):  # loop over the dataset multiple times
@@ -113,16 +118,17 @@ def train_with_validation(max_epochs, trainloader, testloader, validationloader,
                 break
 
     t_end = time.time() - t_start
-    print(f"Total training time: {t_end // 60:.0f}m {t_end % 60:.0f}s")
+    print(f"Total training time: {t_end // 3600:.0f}h {(t_end % 3600) // 60:.0f}m {t_end % 60:.0f}s")
 
     return epoch_losses
 
 
 def save_training_losses(epoch_losses, file_path):
+    """Save losses on train, validation and test sets after each epoch of the training process to the provided file path."""
     with open(file_path, "w") as f:
         f.write("Train loss\tValidation loss\tTest loss\n")
         for epoch_loss in epoch_losses:
-            f.write(f"{epoch_loss[0]}\t{epoch_loss[1]}\t{epoch_loss[3]}\n")
+            f.write(f"{epoch_loss[0]}\t{epoch_loss[1]}\t{epoch_loss[2]}\n")
 
 
 if __name__ == "__main__":
@@ -153,7 +159,7 @@ if __name__ == "__main__":
     epochs = n_epochs
     epoch_losses = []
     for epoch in range(epochs):  # loop over the dataset multiple times
-        train_loss = train(dataloader, model, optimizer)
+        train_loss = train(dataloader, model, optimizer, MSE())
         epoch_losses.append(train_loss.item())
         print(f"Training loss after epoch {epoch + 1}: {train_loss}")
 

@@ -8,7 +8,8 @@ from model.Encoder import DenseBIEncoder
 
 
 class MSE(nn.Module):
-    # Wrapper class to allow additional arguments through **kwargs, required for different loss functions
+    """Wrapper class for torch.nn.MSELoss to allow additional arguments for easy swapping of loss functions."""
+
     def __init__(self, model=None):
         super(MSE, self).__init__()
         self.name = "MSE Loss"
@@ -19,12 +20,14 @@ class MSE(nn.Module):
 
 
 class MSE_Soft_Link_Sum(nn.Module):
-    def __init__(self, model=None):
+    """Standard MSE with an additional term, weighted by alpha, for the sum of soft link weights."""
+
+    def __init__(self, alpha=1.0):
         super(MSE_Soft_Link_Sum, self).__init__()
         self.name = "MSE + soft link sum"
-        self.model = model
+        self.alpha = alpha
 
-    def forward(self, x, y, model: Autoencoder, alpha=1.0, **kwargs):
+    def forward(self, x, y, model: Autoencoder, **kwargs):
         if isinstance(model.encoder, SparseCoder) or isinstance(model.decoder, SparseCoder):
             raise Exception("Soft links are not supported for models containing SparseTensors")
 
@@ -41,7 +44,7 @@ class MSE_Soft_Link_Sum(nn.Module):
             n_soft_weights += layer_n
         # Debug
         # print("soft_weight_sum: ", soft_weight_sum)
-        return mse + alpha * (soft_weight_sum / n_soft_weights)
+        return mse + self.alpha * (soft_weight_sum / n_soft_weights)
 
 
 def soft_link_sum(net):

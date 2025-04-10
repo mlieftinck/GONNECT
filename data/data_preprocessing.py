@@ -69,7 +69,7 @@ def split_data(data, n_nan_cols, split=0.7, seed=1):
     validation_test_split = 0.5
     # Strip any non-sample column before making the splits
     gene_expression = data.copy()
-    gene_expression = gene_expression[gene_expression.columns[5:]]
+    gene_expression = gene_expression[gene_expression.columns[n_nan_cols:]]
     train_set, remaining_set = train_test_split(gene_expression, train_size=split, random_state=seed)
     validation_set, test_set = train_test_split(remaining_set, train_size=validation_test_split, random_state=seed)
     return train_set, validation_set, test_set
