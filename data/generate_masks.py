@@ -33,11 +33,11 @@ def save_masks(layers: [GOTerm], merge_conditions, dataset_name, dtype, model_ty
     """Generate biologically-informed edge and proxy masks by initializing BICoder objects with layers containing GOTerms. These masks are saved as Tensors and organized by merge conditions, dataset and and model type (sparse/dense)."""
     print(f"\n----- START: Generate {model_type} masks -----")
     if model_type == "sparse":
-        encoder = SparseBIEncoder(layers, torch.nn.ReLU(), dtype)
-        decoder = SparseBIDecoder(layers, torch.nn.ReLU(), dtype)
+        encoder = SparseBIEncoder(layers, torch.nn.ReLU, dtype)
+        decoder = SparseBIDecoder(layers, torch.nn.ReLU, dtype)
     else:
-        encoder = DenseBIEncoder(layers, torch.nn.ReLU(), dtype)
-        decoder = DenseBIDecoder(layers, torch.nn.ReLU(), dtype)
+        encoder = DenseBIEncoder(layers, torch.nn.ReLU, dtype)
+        decoder = DenseBIDecoder(layers, torch.nn.ReLU, dtype)
     print(f"----- COMPLETED: Generate {model_type} masks -----")
     os.makedirs(f"../masks/encoder/{merge_conditions}", exist_ok=True)
     torch.save(encoder.edge_masks, f"../masks/encoder/{merge_conditions}/{dataset_name}_{model_type}_edge_masks.pt")
@@ -67,8 +67,8 @@ def load_masks(module, merge_conditions, dataset_name, model_type):
 
 
 if __name__ == "__main__":
-    merge_conditions = (1, 100)
-    dataset_name = "TCGA_complete_bp_norm"
+    merge_conditions = (1, 30)
+    dataset_name = "TCGA_complete_bp_top1k"
     n_nan_cols = 5
     dtype = torch.float64
 

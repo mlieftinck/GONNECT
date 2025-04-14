@@ -11,31 +11,32 @@ from train.loss import MSE, MSE_Soft_Link_Sum
 from train.train import make_data_splits, train_with_validation, save_training_losses
 
 if __name__ == "__main__":
+    experiment_name = "10-4_fc_cpu"
     # Model params
     model_type = "dense"
-    biologically_informed = "encoder"
+    biologically_informed = ""
     soft_links = False
     activation_fn = torch.nn.ReLU
-    loss_fn = MSE_Soft_Link_Sum() if soft_links else MSE()
+    loss_fn = MSE_Soft_Link_Sum(alpha=1.0) if soft_links else MSE()
     # GO params
     go_preprocessing = True
-    merge_conditions = (1, 10)
-    n_go_layers_used = 5
+    merge_conditions = (1, 30)
+    n_go_layers_used = 4
     # Training params
     dataset_name = "TCGA_complete_bp_top1k"
     n_samples = 10000
     batch_size = 100
-    n_epochs = 300
-    learning_rate = 0.005
+    n_epochs = 5000
+    learning_rate = 0.01
     momentum = 0.9
     patience = 5
     device = "cpu"
-    save_losses = False
-    loss_path = ""
+    save_losses = True
+    loss_path = experiment_name
     # Model storage params
-    save_weights = False
+    save_weights = True
     load_weights = False
-    weights_path = ""
+    weights_path = experiment_name
     # Additional params
     data_split = 0.7
     seed = 1
@@ -95,25 +96,25 @@ if __name__ == "__main__":
 
     model = Autoencoder(encoder, decoder)
     if load_weights:
-        model.load_state_dict(torch.load(f"../saved_weights/{dataset_name}/{weights_path}.pt", weights_only=True))
+        model.load_state_dict(torch.load(f"../trained_models/{dataset_name}/{weights_path}_model.pt", weights_only=True))
 
     # Training
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
     epoch_losses = train_with_validation(n_epochs, trainloader, testloader, validationloader, model, optimizer, loss_fn,
                                          patience, device)
     if save_losses:
-        save_training_losses(epoch_losses, loss_path + ".txt")
+        save_training_losses(epoch_losses, f"../trained_models/{dataset_name}/{loss_path}_results.txt")
 
     # Debug: show network weights as colored grid
     # plt.imshow(encoder.net_layers._modules["0"].weight.data, cmap="RdYlGn")
     if save_weights:
-        torch.save(model.state_dict(), f"../saved_weights/{dataset_name}/{weights_path}.pt")
-        print(f"\n----- Saved weights to file ({weights_path}) -----")
+        torch.save(model.state_dict(), f"../trained_models/{dataset_name}/{weights_path}_model.pt")
+        print(f"\n----- Saved weights to file ({weights_path}_model.pt) -----")
 
     # Plot train and test loss
     plt.plot(epoch_losses)
-    plt.title(f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(n_samples * data_split)})")
+    plt.title(f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(min(n_samples, 9797) * data_split)})")
     plt.xlabel("Epoch")
     plt.ylabel(loss_fn.name)
-    plt.legend(["train", "test"])
+    plt.legend(["train", "validation", "test"])
     plt.show()
