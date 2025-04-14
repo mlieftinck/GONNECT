@@ -448,12 +448,12 @@ def remove_superroot(go: dict[str, GOTerm]):
 
 def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False):
     # Initialize GO DAG
-    go_main = create_dag("../data/go-basic.obo")
+    go_main = create_dag("../../data/go-basic.obo")
     go_bp = filter_by_namespace(go_main, {"biological_process"})
     go = copy_dag(go_bp)
     # Process GO DAG
     # Add genes
-    link_genes_to_go_by_namespace(go, "../../../GO_TCGA/goa_human.gaf", "biological_process", genes)
+    link_genes_to_go_by_namespace(go, "../../data/goa_human.gaf", "biological_process", genes)
     if print_go:
         print_layers(create_layers(go))
     remove_geneless_branches(go)

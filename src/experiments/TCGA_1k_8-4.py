@@ -11,10 +11,10 @@ from src.train.loss import MSE, MSE_Soft_Link_Sum
 from src.train.train import make_data_splits, train_with_validation, save_training_losses
 
 if __name__ == "__main__":
-    experiment_name = "10-4_fc_cpu"
+    experiment_name = ""
     # Model params
     model_type = "dense"
-    biologically_informed = ""
+    biologically_informed = "encoder"
     soft_links = False
     activation_fn = torch.nn.ReLU
     loss_fn = MSE_Soft_Link_Sum(alpha=1.0) if soft_links else MSE()
@@ -26,15 +26,15 @@ if __name__ == "__main__":
     dataset_name = "TCGA_complete_bp_top1k"
     n_samples = 10000
     batch_size = 100
-    n_epochs = 5000
+    n_epochs = 2
     learning_rate = 0.01
     momentum = 0.9
     patience = 5
     device = "cpu"
-    save_losses = True
+    save_losses = False
     loss_path = experiment_name
     # Model storage params
-    save_weights = True
+    save_weights = False
     load_weights = False
     weights_path = experiment_name
     # Additional params
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     n_nan_cols = 5
 
     # Data processing
-    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", nrows=min(n_samples, 9797),
+    data = pd.read_csv(f"../../data/{dataset_name}.csv.gz", nrows=min(n_samples, 9797),
                        usecols=range(n_nan_cols + 1000), compression="gzip")
     dataloader, trainloader, validationloader, testloader = make_data_splits(data, n_nan_cols, n_samples, batch_size,
                                                                              data_split, seed)
