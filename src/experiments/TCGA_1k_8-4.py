@@ -26,7 +26,7 @@ if __name__ == "__main__":
     dataset_name = "TCGA_complete_bp_top1k"
     n_samples = 10000
     batch_size = 100
-    n_epochs = 2
+    n_epochs = 5000
     learning_rate = 0.01
     momentum = 0.9
     patience = 5
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         print("----- COMPLETED: GO preprocessing -----")
 
     else:
-        go_layers = torch.load(f"../masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
+        go_layers = torch.load(f"../../out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
         masks = load_masks(biologically_informed, merge_conditions, dataset_name, model_type)
         print("\n----- COMPLETED: Loading GO from file -----")
 
@@ -96,19 +96,19 @@ if __name__ == "__main__":
 
     model = Autoencoder(encoder, decoder)
     if load_weights:
-        model.load_state_dict(torch.load(f"../trained_models/{dataset_name}/{weights_path}_model.pt", weights_only=True))
+        model.load_state_dict(torch.load(f"../../out/trained_models/{dataset_name}/{weights_path}_model.pt", weights_only=True))
 
     # Training
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
     epoch_losses = train_with_validation(n_epochs, trainloader, testloader, validationloader, model, optimizer, loss_fn,
                                          patience, device)
     if save_losses:
-        save_training_losses(epoch_losses, f"../trained_models/{dataset_name}/{loss_path}_results.txt")
+        save_training_losses(epoch_losses, f"../../out/trained_models/{dataset_name}/{loss_path}_results.txt")
 
     # Debug: show network weights as colored grid
     # plt.imshow(encoder.net_layers._modules["0"].weight.data, cmap="RdYlGn")
     if save_weights:
-        torch.save(model.state_dict(), f"../trained_models/{dataset_name}/{weights_path}_model.pt")
+        torch.save(model.state_dict(), f"../../out/trained_models/{dataset_name}/{weights_path}_model.pt")
         print(f"\n----- Saved weights to file ({weights_path}_model.pt) -----")
 
     # Plot train and test loss

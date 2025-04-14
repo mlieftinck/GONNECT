@@ -7,7 +7,7 @@ from src.data_processing.go_preprocessing import link_genes_to_go_by_namespace
 
 
 def list_ids_in_go_per_namespace(go: dict, namespace: str):
-    link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", namespace)
+    link_genes_to_go_by_namespace(go, "../../data/goa_human.gaf", namespace)
     linked_ids = []
     for term in go.values():
         if isinstance(term, GeneTerm):

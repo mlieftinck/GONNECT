@@ -21,7 +21,7 @@ def build_model(model_type: str, biologically_informed: str, soft_links: bool, d
         print("----- COMPLETED: GO preprocessing -----")
 
     else:
-        go_layers = torch.load(f"../masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
+        go_layers = torch.load(f"../../out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
         masks = load_masks(biologically_informed, merge_conditions, dataset_name, model_type)
         print("\n----- COMPLETED: Loading GO from file -----")
 
