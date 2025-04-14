@@ -2,20 +2,20 @@ from unittest import TestCase
 from goatools.obo_parser import GODag
 from DAGGenerator import DAGGenerator
 import matplotlib.pyplot as plt
-from data.GeneTerm import GeneTerm
-from data.dag_analysis import is_imbalanced, print_dag_info, create_layers, genes_not_on_leaves_ids, \
+from src.data_processing.GeneTerm import GeneTerm
+from src.data_processing.dag_analysis import is_imbalanced, print_dag_info, create_layers, genes_not_on_leaves_ids, \
     print_layers, is_alternative_id, create_layers_deprecated
-from data.data_preprocessing import read_gene_ids
-from data.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
+from src.data_processing.data_preprocessing import read_gene_ids
+from src.data_processing.go_preprocessing import insert_proxy_terms, update_level_and_depth, pull_leaves_down, \
     relationships_to_parents, \
     merge_prune_until_convergence, balance_until_convergence, link_genes_to_go_by_namespace, remove_geneless_branches
 from go_preprocessing import create_dag, copy_dag, filter_by_namespace, layers_with_duplicates, layer_overlap, \
     prune_skip_connections, merge_chains, all_leaf_ids, plot_depth_distribution
 from ProxyTerm import ProxyTerm
 
-go_main = create_dag("go-basic.obo")
+go_main = create_dag("../../data/go-basic.obo")
 go_bp_main = filter_by_namespace(go_main, {"biological_process"})
-go_rel_main = create_dag("go-basic.obo", rel=True)
+go_rel_main = create_dag("../../data/go-basic.obo", rel=True)
 go_rel_main_parentless = copy_dag(go_rel_main)
 relationships_to_parents(go_rel_main)
 plot = False
@@ -284,7 +284,7 @@ class Test(TestCase):
         pull_leaves_down(go, len(go))
 
     def test_load_relationships(self):
-        go_rel_full = GODag("go-basic.obo", optional_attrs={"relationship"})
+        go_rel_full = GODag("../../data/go-basic.obo", optional_attrs={"relationship"})
         go_rel = filter_by_namespace(go_rel_full, {"biological_process"})
         del go_rel_full
         self.assertIsNotNone(go_rel["GO:0002893"].relationship)

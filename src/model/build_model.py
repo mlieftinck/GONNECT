@@ -1,11 +1,11 @@
 import torch
 
-from data.dag_analysis import print_layers
-from data.generate_masks import load_masks
-from data.go_preprocessing import construct_go_bp_layers
-from model.Autoencoder import Autoencoder
-from model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
-from model.Encoder import SparseBIEncoder, DenseBIEncoder, Encoder
+from src.data_processing.dag_analysis import print_layers
+from src.data_processing.generate_masks import load_masks
+from src.data_processing.go_preprocessing import construct_go_bp_layers
+from src.model.Autoencoder import Autoencoder
+from src.model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
+from src.model.Encoder import SparseBIEncoder, DenseBIEncoder, Encoder
 
 
 def build_model(model_type: str, biologically_informed: str, soft_links: bool, dataset_name: str,

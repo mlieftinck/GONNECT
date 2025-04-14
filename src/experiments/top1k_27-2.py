@@ -3,13 +3,13 @@ from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import pandas as pd
 
-from data.data_preprocessing import split_data_deprecated as split_data
-from data.go_preprocessing import *
-from model.Autoencoder import Autoencoder
-from model.deprecated.OldDecoder import Decoder
-from model.deprecated.OldEncoder import Encoder, SparseEncoder
-from train.loss import MSE
-from train.train import train, test
+from src.data_processing.data_preprocessing import split_data_deprecated as split_data
+from src.data_processing.go_preprocessing import *
+from src.model.Autoencoder import Autoencoder
+from src.model.deprecated.OldDecoder import Decoder
+from src.model.deprecated.OldEncoder import Encoder, SparseEncoder
+from src.train.loss import MSE
+from src.train.train import train, test
 
 if __name__ == "__main__":
     # GO params

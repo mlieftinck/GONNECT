@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 
-from model.Autoencoder import Autoencoder
-from model.Coder import SparseCoder
-from model.Decoder import Decoder, DenseBIDecoder
-from model.Encoder import DenseBIEncoder
+from src.model.Autoencoder import Autoencoder
+from src.model.Coder import SparseCoder
+from src.model.Decoder import Decoder, DenseBIDecoder
+from src.model.Encoder import DenseBIEncoder
 
 
 class MSE(nn.Module):

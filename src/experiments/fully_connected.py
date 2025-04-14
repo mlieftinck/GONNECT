@@ -2,17 +2,17 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import pandas as pd
-from data.go_preprocessing import *
-from model.Autoencoder import Autoencoder
-from model.deprecated.OldDecoder import Decoder
-from model.deprecated.OldEncoder import Encoder, SparseEncoder
-from train.train import train
+from src.data_processing.go_preprocessing import *
+from src.model.Autoencoder import Autoencoder
+from src.model.deprecated.OldDecoder import Decoder
+from src.model.deprecated.OldEncoder import Encoder, SparseEncoder
+from src.train.train import train
 
 if __name__ == "__main__":
     biologically_informed = True
     n_samples = 1000
     n_nan_cols = 3
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples),
+    data = pd.read_csv("../../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples),
                        compression='gzip').sort_values("gene id")
     genes = list(data["gene id"])
     merge_conditions = (1, 10)

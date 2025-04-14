@@ -2,8 +2,8 @@ from goatools.obo_parser import GOTerm
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data.GeneTerm import GeneTerm
-from data.ProxyTerm import ProxyTerm
+from src.data_processing.GeneTerm import GeneTerm
+from src.data_processing.ProxyTerm import ProxyTerm
 
 
 def is_alternative_id(go: dict[str, GOTerm], term_id):

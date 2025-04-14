@@ -1,14 +1,14 @@
 import torch
 import pandas as pd
 from matplotlib import pyplot as plt
-from data.dag_analysis import print_layers
-from data.generate_masks import load_masks
-from data.go_preprocessing import construct_go_bp_layers
-from model.Autoencoder import Autoencoder
-from model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
-from model.Encoder import SparseBIEncoder, Encoder, DenseBIEncoder
-from train.loss import MSE, MSE_Soft_Link_Sum
-from train.train import make_data_splits, train_with_validation, save_training_losses
+from src.data_processing.dag_analysis import print_layers
+from src.data_processing.generate_masks import load_masks
+from src.data_processing.go_preprocessing import construct_go_bp_layers
+from src.model.Autoencoder import Autoencoder
+from src.model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
+from src.model.Encoder import SparseBIEncoder, Encoder, DenseBIEncoder
+from src.train.loss import MSE, MSE_Soft_Link_Sum
+from src.train.train import make_data_splits, train_with_validation, save_training_losses
 
 if __name__ == "__main__":
     experiment_name = "10-4_fc_cpu"

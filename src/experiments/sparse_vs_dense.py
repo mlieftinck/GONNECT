@@ -2,15 +2,15 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import pandas as pd
-from data.go_preprocessing import *
-from model.Autoencoder import Autoencoder
-from model.deprecated.OldDecoder import Decoder
-from model.deprecated.OldEncoder import BIEncoder, SparseEncoder
-from train.train import train
+from src.data_processing.go_preprocessing import *
+from src.model.Autoencoder import Autoencoder
+from src.model.deprecated.OldDecoder import Decoder
+from src.model.deprecated.OldEncoder import BIEncoder, SparseEncoder
+from src.train.train import train
 import time
 
 if __name__ == "__main__":
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip').sort_values("gene id")
+    data = pd.read_csv("../../../GO_TCGA/GE_bp_100.csv.gz", compression='gzip').sort_values("gene id")
     n_nan_cols = 3
     genes = list(data["gene id"])
     merge_conditions = (1, 10)

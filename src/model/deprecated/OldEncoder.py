@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from data.ProxyTerm import ProxyTerm
-from model.SparseLinear import SparseLinear
+from src.data_processing.ProxyTerm import ProxyTerm
+from src.model.SparseLinear import SparseLinear
 
 
 class Encoder(nn.Module):

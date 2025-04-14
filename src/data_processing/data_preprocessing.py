@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from data.GeneTerm import GeneTerm
-from data.go_preprocessing import link_genes_to_go_by_namespace
+from src.data_processing.GeneTerm import GeneTerm
+from src.data_processing.go_preprocessing import link_genes_to_go_by_namespace
 
 
 def list_ids_in_go_per_namespace(go: dict, namespace: str):
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     # Save list of ID matches between data and GO (no duplicates)
     # Result: different IDs map to the same name
-    go_ids = read_gene_ids("../../GO_TCGA/gene_go_bp_id.txt")
+    go_ids = read_gene_ids("../../../GO_TCGA/gene_go_bp_id.txt")
     if save:
         save_gene_matches(set(go_ids), set(ids), path=f"../../GO_TCGA/{dataset_name}_matches_bp_id.txt")
 

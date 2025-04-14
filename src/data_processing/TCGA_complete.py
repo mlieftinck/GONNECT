@@ -1,7 +1,7 @@
 import pandas as pd
 import scanpy as sc
 import anndata
-from data.data_preprocessing import read_gene_names_to_uniprot_ids, read_gene_names_and_ids, read_gene_ids, save_list, \
+from src.data_processing.data_preprocessing import read_gene_names_to_uniprot_ids, read_gene_names_and_ids, read_gene_ids, \
     read_uniprot_ids_to_gene_names
 
 
@@ -14,8 +14,8 @@ def test_mapping(n):
 if __name__ == '__main__':
     # Load data
     dataset_name = "TCGA_complete"
-    data = pd.read_pickle("../../GO_TCGA/expression.pkl")
-    metadata = pd.read_csv(f"../../GO_TCGA/clinical.csv")
+    data = pd.read_pickle("../../../GO_TCGA/expression.pkl")
+    metadata = pd.read_csv(f"../../../GO_TCGA/clinical.csv")
 
     # Extract gene names from data
     n_nan_cols = 2

@@ -7,8 +7,8 @@ from sklearn.manifold import TSNE
 import plotly.express as px
 import plotly.io as pio
 
-from model.Autoencoder import Autoencoder
-from model.build_model import build_model
+from src.model.Autoencoder import Autoencoder
+from src.model.build_model import build_model
 
 
 def convert_labels(labels):
@@ -82,6 +82,7 @@ def plot_tsne(model: Autoencoder, data: pd.DataFrame, labels, seed=42, colored=T
     plt.tight_layout()
     plt.show()
 
+    # Interactive plot in browser
     pio.renderers.default = 'browser'
     fig = px.scatter(x=embedding[:, 0], y=embedding[:, 1], color=labels)
     fig.update_layout(legend_title_text=labels.name)

@@ -6,49 +6,48 @@ import time
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 
-from data.dag_analysis import print_layers
-from data.data_preprocessing import split_data_deprecated as split_data
-from data.generate_masks import load_masks
-from data.go_preprocessing import construct_go_bp_layers
-from model.Autoencoder import Autoencoder
-from model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
-from model.Encoder import SparseBIEncoder, Encoder, DenseBIEncoder
-from train.loss import MSE, MSE_Soft_Link_Sum
-from train.train import train, test
+from src.data_processing.DAGGenerator import DAGGenerator
+from src.data_processing.dag_analysis import print_layers, create_layers
+from src.data_processing.data_preprocessing import split_data_deprecated
+from src.data_processing.go_preprocessing import balance_until_convergence, pull_leaves_down
+from src.model.Autoencoder import Autoencoder
+from src.model.Decoder import SparseBIDecoder, DenseBIDecoder, Decoder
+from src.model.Encoder import SparseBIEncoder, Encoder, DenseBIEncoder
+from src.train.loss import MSE, MSE_Soft_Link_Sum
+from src.train.train import train, test
 
 if __name__ == "__main__":
     # Model params
     model_type = "dense"
-    biologically_informed = "encoder"
+    biologically_informed = "decoder"
     soft_links = False
     activation = torch.nn.ReLU
-    loss_function = MSE()
+    loss_function = MSE_Soft_Link_Sum() if soft_links else MSE()
     # GO params
-    go_preprocessing = True
-    merge_conditions = (1, 30)
-    n_go_layers_used = 7
+    go_preprocessing = False
+    merge_conditions = (1, 10)
+    n_go_layers_used = 500
     # Training params
-    dataset_name = "GE_top1k_bp"
-    n_samples = 10000
-    batch_size = 100
-    n_epochs = 200
-    learning_rate = 0.005
+    dataset_name = "mini_dag"
+    n_samples = 1000
+    batch_size = 50
+    n_epochs = 100
+    learning_rate = 0.001
     momentum = 0.9
     device = "cpu"
     # Model storage params
     save_weights = False
     load_weights = False
-    weights_path = ""
+    weights_path = "25-3"
     # Additional params
     data_split = 0.7
     seed = 1
     dtype = torch.float64
-    n_nan_cols = 2
+    n_nan_cols = 0
 
     # Data processing
-    data = pd.read_csv(f"../../GO_TCGA/{dataset_name}.csv.gz", usecols=range(2 + min(n_samples, 11499)),
-                       compression="gzip").sort_values("gene id")
-    train_set, validation_set, test_set = split_data(data, n_nan_cols, data_split, seed)
+    data = pd.DataFrame(np.random.normal(size=(3, n_samples)), columns=list("ID" + str(i) for i in range(n_samples)))
+    train_set, validation_set, test_set = split_data_deprecated(data, n_nan_cols, data_split, seed)
     data_np = data.iloc[:, n_nan_cols:].to_numpy()
     data_torch = TensorDataset(torch.from_numpy(np.transpose(data_np)))
     dataloader = DataLoader(data_torch, batch_size=min(n_samples, batch_size), shuffle=False)
@@ -60,17 +59,12 @@ if __name__ == "__main__":
     testloader = DataLoader(test_torch, batch_size=min(n_samples, batch_size), shuffle=False)
 
     # GO processing
-    if go_preprocessing:
-        print("\n----- START: GO preprocessing -----")
-        genes = list(data["gene id"])
-        go_layers = construct_go_bp_layers(genes, merge_conditions, print_go=True)
-        masks = None
-        print("----- COMPLETED: GO preprocessing -----")
-
-    else:
-        go_layers = torch.load(f"../masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
-        masks = load_masks(biologically_informed, merge_conditions, dataset_name, model_type)
-        print("\n----- COMPLETED: Loading GO from file -----")
+    go = DAGGenerator.dag4()
+    size = len(go)
+    balance_until_convergence(go, "A")
+    pull_leaves_down(go, size)
+    go_layers = create_layers(go)
+    masks = None
 
     # Model construction
     used_go_layers = go_layers[-min(n_go_layers_used, len(go_layers)):]
@@ -104,6 +98,9 @@ if __name__ == "__main__":
         decoder = Decoder(used_go_layers, activation, dtype)
 
     model = Autoencoder(encoder, decoder)
+    # Debug
+    aa_enc_lay = model.encoder.net_layers._modules
+    aa_dec_lay = model.decoder.net_layers._modules
     if load_weights:
         model.load_state_dict(torch.load(f"../saved_weights/{dataset_name}/{weights_path}.pt", weights_only=True))
 
@@ -114,14 +111,12 @@ if __name__ == "__main__":
     for epoch in range(n_epochs):  # loop over the dataset multiple times
         train_loss = train(trainloader, model, optimizer, loss_fn=loss_function, device=device)
         test_loss = test(testloader, model, loss_fn=loss_function, device=device)
-        print(f"Train loss after epoch {epoch + 1}:\t{train_loss}\t\t"
+        print(f"Train loss after epoch {epoch + 1}:\t{train_loss}\t"
               f"Test loss after epoch {epoch + 1}:\t{test_loss}")
         epoch_losses.append([train_loss.item(), test_loss.item()])
     t_end = time.time() - t_start
     print(f"Total training time: {t_end // 60:.0f}m {t_end % 60:.0f}s")
 
-    # Debug: show network weights as colored grid
-    # plt.imshow(encoder.net_layers._modules["0"].weight.data, cmap="RdYlGn")
     if save_weights:
         torch.save(model.state_dict(), f"../saved_weights/{dataset_name}/{weights_path}.pt")
         print(f"\n----- Saved weights to file ({weights_path}) -----")

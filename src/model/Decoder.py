@@ -1,15 +1,13 @@
 import torch
 import torch.nn as nn
 
-from model.Coder import DenseCoder, DenseBICoder, SparseCoder
-from model.SparseLinear import SparseLinear
+from src.model.Coder import DenseCoder, DenseBICoder, SparseCoder
+from src.model.SparseLinear import SparseLinear
 
 
-class Encoder(DenseCoder):
+class Decoder(DenseCoder):
     def __init__(self, go_layers, activation_fn, dtype):
-        # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
-        go_layers = list(reversed(go_layers))
-        super(Encoder, self).__init__(go_layers, activation_fn, dtype)
+        super(Decoder, self).__init__(go_layers, activation_fn, dtype)
 
         # Optionally add activation after final linear layer
         pass
@@ -25,11 +23,9 @@ class Encoder(DenseCoder):
                 # nn.init.kaiming_normal_(layer.weight)
 
 
-class DenseBIEncoder(DenseBICoder):
+class DenseBIDecoder(DenseBICoder):
     def __init__(self, go_layers, activation_fn, dtype, masks=None, soft_links=False):
-        # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
-        go_layers = list(reversed(go_layers))
-        super(DenseBIEncoder, self).__init__(go_layers, activation_fn, dtype, masks, soft_links)
+        super(DenseBIDecoder, self).__init__(go_layers, activation_fn, dtype, masks, soft_links)
 
         # Optionally add activation after final linear layer
         pass
@@ -56,21 +52,19 @@ class DenseBIEncoder(DenseBICoder):
             edge_mask = torch.zeros(len(next_layer), len(current_layer), dtype=torch.bool)
 
             for i in range(len(current_layer)):
-                child = current_layer[i]
-                parent_ids = [parent.item_id for parent in child.parents]
+                parent = current_layer[i]
+                child_ids = [child.item_id for child in parent.children]
                 next_layer_ids = [term.item_id for term in next_layer]
                 for j in range(len(next_layer)):
-                    if next_layer_ids[j] in parent_ids:
+                    if next_layer_ids[j] in child_ids:
                         edge_mask[j][i] = 1
             edge_masks.append(edge_mask)
         return edge_masks
 
 
-class SparseBIEncoder(SparseCoder):
+class SparseBIDecoder(SparseCoder):
     def __init__(self, go_layers, activation_fn, dtype, masks=None):
-        # GO layers are originally ordered by ascending depth, so they need to be reversed for the encoder architecture
-        go_layers = list(reversed(go_layers))
-        super(SparseBIEncoder, self).__init__(go_layers, activation_fn, dtype, masks)
+        super(SparseBIDecoder, self).__init__(go_layers, activation_fn, dtype, masks)
 
         # Optionally add activation after final linear layer
         pass
@@ -96,11 +90,11 @@ class SparseBIEncoder(SparseCoder):
             non_zero_indices = []
             # For each layer, find the coordinates of the non-zero values of the adjacency matrix
             for i in range(len(current_layer)):
-                child = current_layer[i]
-                parent_ids = [parent.item_id for parent in child.parents]
+                parent = current_layer[i]
+                child_ids = [child.item_id for child in parent.children]
                 next_layer_ids = [term.item_id for term in next_layer]
                 for j in range(len(next_layer)):
-                    if next_layer_ids[j] in parent_ids:
+                    if next_layer_ids[j] in child_ids:
                         non_zero_indices.append([j, i])
 
             # Construct a sparse boolean mask using the non-zero coordinates

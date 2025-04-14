@@ -3,9 +3,9 @@ import torch
 import os
 
 from goatools.obo_parser import GOTerm
-from data.go_preprocessing import construct_go_bp_layers
-from model.Decoder import DenseBIDecoder, SparseBIDecoder
-from model.Encoder import DenseBIEncoder, SparseBIEncoder
+from src.data_processing.go_preprocessing import construct_go_bp_layers
+from src.model.Decoder import DenseBIDecoder, SparseBIDecoder
+from src.model.Encoder import DenseBIEncoder, SparseBIEncoder
 
 
 def make_layers(merge_conditions, dataset_name, n_nan_cols, print_go=True):

@@ -2,13 +2,13 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 
-from data.data_preprocessing import split_data
-from data.go_preprocessing import *
-from data.DAGGenerator import DAGGenerator
-from model.deprecated.OldEncoder import Encoder, BIEncoder
-from model.deprecated.OldDecoder import Decoder
-from model.Autoencoder import Autoencoder
-from train.loss import MSE
+from src.data_processing.data_preprocessing import split_data
+from src.data_processing.go_preprocessing import *
+from src.data_processing.DAGGenerator import DAGGenerator
+from src.model.deprecated.OldEncoder import Encoder
+from src.model.deprecated.OldDecoder import Decoder
+from src.model.Autoencoder import Autoencoder
+from src.train.loss import MSE
 
 
 def loss_kl_divergence(inputs, outputs, net):

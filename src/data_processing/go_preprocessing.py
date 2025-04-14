@@ -1,8 +1,8 @@
 from goatools.anno.gaf_reader import GafReader
 from goatools.obo_parser import *
 import time
-from data.dag_analysis import *
-from data.ProxyTerm import ProxyTerm
+from src.data_processing.dag_analysis import *
+from src.data_processing.ProxyTerm import ProxyTerm
 
 
 def create_dag(file, rel=False):
@@ -453,7 +453,7 @@ def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False):
     go = copy_dag(go_bp)
     # Process GO DAG
     # Add genes
-    link_genes_to_go_by_namespace(go, "../../GO_TCGA/goa_human.gaf", "biological_process", genes)
+    link_genes_to_go_by_namespace(go, "../../../GO_TCGA/goa_human.gaf", "biological_process", genes)
     if print_go:
         print_layers(create_layers(go))
     remove_geneless_branches(go)
@@ -478,7 +478,7 @@ def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False):
 if __name__ == "__main__":
     """OBSOLETE: Moved to test_go_preprocessing.py"""
     t_start = time.time()
-    obo_file = "go-basic.obo"
+    obo_file = "../../data/go-basic.obo"
     use_reference = 0
     if use_reference:
         # Original GO DAG metrics for comparison
