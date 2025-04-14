@@ -1,0 +1,21 @@
+[project]
+authors = ["mlieftinck <martijn.lieftinck@hotmail.nl>"]
+channels = ["nvidia", "conda-forge", "pytorch", "bioconda"]
+name = "Thesis_BINN"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+pytorch = {version=">2.4.1", channel="pytorch"}
+pixi-pycharm = ">=0.0.8,<0.0.9"
+pandas = ">=2.2.3,<3"
+goatools = ">=1.4.12,<2"
+matplotlib = ">=3.10.0,<4"
+scikit-learn = ">=1.6.1,<2"
+scanpy = ">=1.10.4,<2"
+plotly = ">=6.0.1,<7"
+
+[pypi-dependencies]
+packaging = "*"
