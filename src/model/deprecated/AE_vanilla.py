@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from data.ProxyTerm import ProxyTerm
+from src.data_processing.ProxyTerm import ProxyTerm
 
 
 class BIEncoder(nn.Module):
