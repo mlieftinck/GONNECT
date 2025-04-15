@@ -26,7 +26,7 @@ if __name__ == "__main__":
     dataset_name = "TCGA_complete_bp_top1k"
     n_samples = 10000
     batch_size = 100
-    n_epochs = 5000
+    n_epochs = 3
     learning_rate = 0.01
     momentum = 0.9
     patience = 5
@@ -58,14 +58,15 @@ if __name__ == "__main__":
         print("----- COMPLETED: GO preprocessing -----")
 
     else:
-        go_layers = torch.load(f"../../out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt", weights_only=True)
+        go_layers = torch.load(f"../../out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt",
+                               weights_only=True)
         masks = load_masks(biologically_informed, merge_conditions, dataset_name, model_type)
         print("\n----- COMPLETED: Loading GO from file -----")
 
     # Model construction
     used_go_layers = go_layers[-min(n_go_layers_used, len(go_layers)):]
     print("Layers used in model:")
-    print_layers(used_go_layers, show_genes=go_preprocessing)
+    print_layers(used_go_layers)
     if (biologically_informed == "encoder") or (biologically_informed == "both"):
         if masks:
             # Discard masks of unused GO layers
@@ -96,7 +97,8 @@ if __name__ == "__main__":
 
     model = Autoencoder(encoder, decoder)
     if load_weights:
-        model.load_state_dict(torch.load(f"../../out/trained_models/{dataset_name}/{weights_path}_model.pt", weights_only=True))
+        model.load_state_dict(
+            torch.load(f"../../out/trained_models/{dataset_name}/{weights_path}_model.pt", weights_only=True))
 
     # Training
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
@@ -113,7 +115,8 @@ if __name__ == "__main__":
 
     # Plot train and test loss
     plt.plot(epoch_losses)
-    plt.title(f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(min(n_samples, 9797) * data_split)})")
+    plt.title(
+        f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(min(n_samples, 9797) * data_split)})")
     plt.xlabel("Epoch")
     plt.ylabel(loss_fn.name)
     plt.legend(["train", "validation", "test"])

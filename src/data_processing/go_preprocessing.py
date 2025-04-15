@@ -446,7 +446,50 @@ def remove_superroot(go: dict[str, GOTerm]):
     go.pop(superroot.item_id)
 
 
+def merge_by_depth(go: dict[str, GOTerm], layer_population_threshold: int):
+    print(f"\n----- START: Merging sparse depth levels -----")
+    # Sort GO by depth
+    layers = create_layers(go)
+    merge_events = 0
+    merged_term_ids = []
+    # Merge layer when below population threshold
+    for layer in layers:
+        genes_in_layer = [gene for gene in layer if isinstance(gene, GeneTerm)]
+        if len(layer) - len(genes_in_layer) < layer_population_threshold:
+            for term in layer:
+                if not isinstance(term, GeneTerm):
+                    parents = term.parents
+                    children = term.children
+                    # Root and leaves are never merged
+                    if (len(children) > 0) and (len(parents) > 0):
+
+                        # Update parent-child relations
+                        for parent in parents:
+                            parent.children.remove(term)
+                            parent.children.update(children)
+                        for child in children:
+                            child.parents.remove(term)
+                            child.parents.update(parents)
+
+                            # Update level and depth recursively for all descendants
+                            update_level_and_depth(child)
+
+                        # Keep track of removed terms and their pseudonyms
+                        merged_term_ids.append(term.item_id)
+                        merged_term_ids += term.alt_ids
+                        merge_events += 1
+
+    # Remove merged terms from DAG
+    for merged_id in merged_term_ids:
+        go.pop(merged_id)
+
+    # print(f"Merge events: {merge_events}")
+    print(f"----- COMPLETED: Merging sparse depth levels -----")
+    return merge_events
+
+
 def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False):
+    default_layer_population_threshold = 50
     # Initialize GO DAG
     go_main = create_dag("../../data/go-basic.obo")
     go_bp = filter_by_namespace(go_main, {"biological_process"})
@@ -461,6 +504,14 @@ def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False):
         print_layers(create_layers(go))
     # Merge-prune
     merge_prune_until_convergence(go, merge_conditions[0], merge_conditions[1])
+    if print_go:
+        print_layers(create_layers(go))
+    # Remove small layers
+    if len(merge_conditions) > 2:
+        layer_population_threshold = merge_conditions[2]
+    else:
+        layer_population_threshold = default_layer_population_threshold
+    merge_by_depth(go, layer_population_threshold)
     if print_go:
         print_layers(create_layers(go))
     # Add proxies

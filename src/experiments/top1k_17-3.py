@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     # Model construction
     used_go_layers = go_layers[-min(n_go_layers_used, len(go_layers)):]
-    print_layers(used_go_layers, show_genes=go_preprocessing)
+    print_layers(used_go_layers)
     if (biologically_informed == "encoder") or (biologically_informed == "both"):
         if masks:
             # Discard masks of unused GO layers

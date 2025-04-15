@@ -185,34 +185,54 @@ def create_layers(dag: dict[str, GOTerm]):
     return layer_list
 
 
-def print_layers(layers, show_visualization=True, show_genes=True):
-    """Prints the lengths of the depth-based DAG layers, for proxy and non-proxy terms.
+def print_layers(layers, show_visualization=True):
+    """Prints the lengths of the depth-based DAG layers, for different types of terms.
     Possibility to visualize the structure by printing its shape."""
-    non_proxies = []
+    go_terms = []
+    gene_terms = []
+    proxy_terms = []
     n = 100
+    max_layer_len = max(len(layer) for layer in layers)
+    symbol_multiplier = n / max_layer_len
     for i, layer in enumerate(layers):
-        non_proxy = [term for term in layer if not isinstance(term, ProxyTerm)]
-        non_proxies.append(non_proxy)
-    max_layer_len = max(len(layer) for layer in non_proxies)
-    if show_visualization:
-        print((n + 3) * " " + "terms/proxies")
-        for i in range(len(non_proxies)):
-            non_proxy_fraction = len(non_proxies[i]) / max_layer_len
-            gene_fraction = len([gene for gene in non_proxies[i] if isinstance(gene, GeneTerm)]) / len(non_proxies[i])
-            non_proxy_symbols = max(int(non_proxy_fraction * n), 1)
-            if show_genes:
-                gene_symbols = int(gene_fraction * non_proxy_symbols)
+        go = []
+        gene = []
+        proxy = []
+        for term in layer:
+            if isinstance(term, ProxyTerm):
+                proxy.append(term)
+            elif isinstance(term, GeneTerm):
+                gene.append(term)
             else:
-                gene_symbols = 0
-            visualization = (int((n - non_proxy_symbols) / 2) * " " + (non_proxy_symbols - gene_symbols) * "|" +
-                         gene_symbols * "*" + int((n - non_proxy_symbols) / 2) * " ")
-            print(f"{visualization} \t{i + 1}. {len(non_proxies[i])}/{len(layers[i])}\t{len(non_proxies[i])/len(layers[i])*100:.1f}%")
-        if show_genes:
-            print("\t* = genes")
+                go.append(term)
+        go_terms.append(go)
+        gene_terms.append(gene)
+        proxy_terms.append(proxy)
+    if show_visualization:
+        print((n + 3) * " " + "Total: terms/genes/proxies")
+        for i in range(len(layers)):
+            empty_symbols = int((max_layer_len - len(layers[i])) * symbol_multiplier)
+            go_symbols = int(len(go_terms[i]) * symbol_multiplier)
+            gene_symbols = int(len(gene_terms[i]) * symbol_multiplier)
+            proxy_symbols = int(len(proxy_terms[i]) * symbol_multiplier)
+            if len(go_terms[i]) > 0 and go_symbols == 0:
+                go_symbols = 1
+            if len(gene_terms[i]) > 0 and gene_symbols == 0:
+                gene_symbols = 1
+            if len(proxy_terms[i]) > 0 and proxy_symbols == 0:
+                proxy_symbols = 1
+            visualization = int(empty_symbols / 2) * " " + int(
+                proxy_symbols / 2) * "'" + go_symbols * "|" + gene_symbols * "*" + int(proxy_symbols / 2) * "'" + int(
+                empty_symbols / 2) * " "
+            visualization += " " * (n - len(visualization))
+            print(
+                f"{visualization} \t{i + 1}. {len(layers[i])}: {len(go_terms[i])}/{len(gene_terms[i])}/{len(proxy_terms[i])}")
+
+        print("\t| = GO terms\n\t* = gene terms\n\t' = proxy terms")
     else:
-        print("   terms/proxies")
-        for i in range(len(non_proxies)):
-            print(f"{i + 1}. {len(non_proxies[i])}/{len(layers[i])}")
+        print("   Total: terms/genes/proxies")
+        for i in range(len(go_terms)):
+            print(f"{i + 1}. {len(layers)}: {len(go_terms[i])}/{len(gene_terms[i])}/{len(proxy_terms[i])}")
 
 
 def only_go_terms(dag: dict[str, GOTerm]):
