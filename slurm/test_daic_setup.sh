@@ -19,5 +19,5 @@ apptainer exec --nv --writable-tmpfs --pwd /opt/app --containall \
 	--bind src/:/opt/app/src/ \
 	--bind data/:/opt/app/data/ \
 	--bind out/:/opt/app/out/ \
-	--bind TCGA_1k_16-4.py:opt/app/TCGA_1k_16-4.py
+	--bind TCGA_1k_16-4.py:opt/app/TCGA_1k_16-4.py \
 	./container_pixi_0.1.0.sif pixi run python -u TCGA_1k_16-4.py

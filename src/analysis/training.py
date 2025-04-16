@@ -11,7 +11,7 @@ def plot_training_loss(path):
         epoch_losses.append([float(loss) for loss in losses])
 
     # Plot train and test loss
-    plt.plot(epoch_losses)
+    plt.plot(range(1, len(epoch_losses) + 1), epoch_losses)
     plt.title("")
     plt.xlabel("Epoch")
     plt.ylabel("MSE")

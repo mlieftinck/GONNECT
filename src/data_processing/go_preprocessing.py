@@ -447,6 +447,7 @@ def remove_superroot(go: dict[str, GOTerm]):
 
 
 def merge_by_depth(go: dict[str, GOTerm], layer_population_threshold: int):
+    """Sort the current GO DAG by depth. Each depth level with fewer GO-term (GeneTerms and ProxyTerms excluded) than the provided threshold get merged into the layer above. Only GO terms are merged, since genes will be pulled down anyway."""
     print(f"\n----- START: Merging sparse depth levels -----")
     # Sort GO by depth
     layers = create_layers(go)

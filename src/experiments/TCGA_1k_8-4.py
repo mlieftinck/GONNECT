@@ -114,7 +114,7 @@ if __name__ == "__main__":
         print(f"\n----- Saved weights to file ({weights_path}_model.pt) -----")
 
     # Plot train and test loss
-    plt.plot(epoch_losses)
+    plt.plot(range(1, len(epoch_losses) + 1), epoch_losses)
     plt.title(
         f"Loss for {model_type} BI-module: {biologically_informed} (n = {int(min(n_samples, 9797) * data_split)})")
     plt.xlabel("Epoch")
