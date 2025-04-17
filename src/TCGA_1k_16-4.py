@@ -16,11 +16,11 @@ if __name__ == "__main__":
     loss_fn = MSE_Soft_Link_Sum(alpha=1.0) if soft_links else MSE()
     # GO params
     go_preprocessing = True
-    merge_conditions = (1, 30, 50)
+    merge_conditions = (1, 30, 50)  # min parents, min children, min terms per layer
     n_go_layers_used = 5
     # Training params
     dataset_name = "TCGA_complete_bp_top1k"
-    n_samples = 10000
+    n_samples = 9797
     batch_size = 100
     n_epochs = 100
     learning_rate = 0.01
@@ -63,7 +63,8 @@ if __name__ == "__main__":
                         genes)
     if load_weights:
         model.load_state_dict(
-            torch.load(f"{project_folder}/out/trained_models/{dataset_name}/{load_weights_path}_model.pt", weights_only=True))
+            torch.load(f"{project_folder}/out/trained_models/{dataset_name}/{load_weights_path}_model.pt",
+                       weights_only=True))
         print(f"\n----- Loaded weights from file ({save_weights_path}_model.pt) -----")
 
     # Training
@@ -72,10 +73,12 @@ if __name__ == "__main__":
     epoch_losses = train_with_validation(n_epochs, trainloader, testloader, validationloader, model, optimizer, loss_fn,
                                          patience, device)
     if save_losses:
-        save_training_losses(epoch_losses, f"{project_folder}/out/trained_models/{dataset_name}/{loss_path}_results.txt")
+        save_training_losses(epoch_losses,
+                             f"{project_folder}/out/trained_models/{dataset_name}/{loss_path}_results.txt")
 
     if save_weights:
-        torch.save(model.state_dict(), f"{project_folder}/out/trained_models/{dataset_name}/{save_weights_path}_model.pt")
+        torch.save(model.state_dict(),
+                   f"{project_folder}/out/trained_models/{dataset_name}/{save_weights_path}_model.pt")
         print(f"\n----- Saved weights to file ({save_weights_path}_model.pt) -----")
 
     # plot_training_loss(f"{project_folder}out/trained_models/{dataset_name}/{loss_path}_results.txt")

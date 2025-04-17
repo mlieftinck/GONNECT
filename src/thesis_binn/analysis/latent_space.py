@@ -58,7 +58,7 @@ def plot_umap(model: Autoencoder, data: pd.DataFrame, labels, seed=42, colored=T
     embedding = reducer.fit_transform(latent_x)
     # Plot UMAP coordinates, colored by label
     setup_figure(embedding, labels, fig_size=size_by_label(labels.name), colored=colored)
-    plt.title(f'UMAP of data colored by {labels.name}')
+    plt.title(f'UMAP of latent space colored by {labels.name}')
     plt.xlabel('UMAP-1')
     plt.ylabel('UMAP-2')
     plt.tight_layout()
@@ -78,7 +78,7 @@ def plot_tsne(model: Autoencoder, data: pd.DataFrame, labels, seed=42, colored=T
     embedding = tsne.fit_transform(latent_x)
     # Plot t-SNE coordinates, colored by label
     setup_figure(embedding, labels, fig_size=size_by_label(labels.name), colored=colored)
-    plt.title(f't-SNE of data colored by {labels.name}')
+    plt.title(f't-SNE of latent space colored by {labels.name}')
     plt.xlabel('t-SNE-1')
     plt.ylabel('t-SNE-2')
     plt.tight_layout()
@@ -104,7 +104,7 @@ def plot_pca(model: Autoencoder, data: pd.DataFrame, labels, seed=42, colored=Tr
     embedding = pca.fit_transform(latent_x)
     # Plot PCA coordinates, colored by label
     setup_figure(embedding, labels, fig_size=size_by_label(labels.name), colored=colored)
-    plt.title(f'PCA of data colored by {labels.name}')
+    plt.title(f'PCA of latent space colored by {labels.name}')
     plt.xlabel('PC1')
     plt.ylabel('PC2')
     plt.tight_layout()

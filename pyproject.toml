@@ -3,7 +3,7 @@ authors = [
     { name = "mlieftinck", email = "martijn.lieftinck@hotmail.nl" }
 ]
 name = "thesis_binn"
-version = "0.2.0" # INCREMENT FOR EVERY NEW DEPENDENCY
+version = "0.2.1" # INCREMENT FOR EVERY NEW DEPENDENCY
 requires-python = ">=3.9"
 dependencies = [
     "packaging"
@@ -16,7 +16,7 @@ platforms = ["win-64", "linux-64"]
 [tool.pixi.pypi-dependencies]
 thesis_binn = { path = ".", editable = true }
 
-[system-requirements]
+[tool.pixi.system-requirements]
 linux = "3.10"
 cuda = "12.4"
 
