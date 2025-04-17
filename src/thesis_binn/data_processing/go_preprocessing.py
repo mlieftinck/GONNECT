@@ -489,15 +489,22 @@ def merge_by_depth(go: dict[str, GOTerm], layer_population_threshold: int):
     return merge_events
 
 
-def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False, package_call=False):
+def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False, package_call=False, cluster=False):
     default_layer_population_threshold = 0
     # Initialize GO DAG
-    go_main = create_dag(f"{package_call * "../../"}../data/go-basic.obo")
+    if cluster:
+        go_main = create_dag(f"/opt/app/data/go-basic.obo")
+    else:
+        go_main = create_dag(f"{package_call * "../../"}../data/go-basic.obo")
     go_bp = filter_by_namespace(go_main, {"biological_process"})
     go = copy_dag(go_bp)
     # Process GO DAG
     # Add genes
-    link_genes_to_go_by_namespace(go, f"{package_call * "../../"}../data/goa_human.gaf", "biological_process", genes)
+    if cluster:
+        link_genes_to_go_by_namespace(go, f"/opt/app/data/goa_human.gaf", "biological_process", genes)
+    else:
+        link_genes_to_go_by_namespace(go, f"{package_call * "../../"}../data/goa_human.gaf", "biological_process",
+                                      genes)
     if print_go:
         print_layers(create_layers(go))
     remove_geneless_branches(go)

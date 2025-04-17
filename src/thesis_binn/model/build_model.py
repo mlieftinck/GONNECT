@@ -10,20 +10,26 @@ from thesis_binn.model.Encoder import SparseBIEncoder, DenseBIEncoder, Encoder
 
 def build_model(model_type: str, biologically_informed: str, soft_links: bool, dataset_name: str,
                 go_preprocessing: bool, merge_conditions, n_go_layers_used: int, activation_fn, dtype, genes=None,
-                package_call=False):
+                package_call=False, cluster=False):
     # GO processing
     if go_preprocessing:
         if not genes:
             raise Exception("Cannot perform GO preprocessing without gene list")
 
         print("\n----- START: GO preprocessing -----")
-        go_layers = construct_go_bp_layers(genes, merge_conditions, print_go=True, package_call=package_call)
+        go_layers = construct_go_bp_layers(genes, merge_conditions, print_go=True, package_call=package_call,
+                                           cluster=cluster)
         masks = None
         print("----- COMPLETED: GO preprocessing -----")
 
     else:
-        go_layers = torch.load(
-            f"{package_call * "../../"}../out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt",
+        if cluster:
+            go_layers = torch.load(
+                f"/opt/app/out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt",
+                weights_only=True)
+        else:
+            go_layers = torch.load(
+                f"{package_call * "../../"}../out/masks/layers/{str(merge_conditions)}/{dataset_name}_layers.pt",
                 weights_only=True)
         masks = load_masks(biologically_informed, merge_conditions, dataset_name, model_type)
         print("\n----- COMPLETED: Loading GO from file -----")

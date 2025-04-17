@@ -6,7 +6,7 @@ from thesis_binn.train.loss import MSE_Soft_Link_Sum, MSE
 from thesis_binn.train.train import make_data_splits, train_with_validation, save_training_losses
 
 if __name__ == "__main__":
-    project_folder = ".."
+    cluster = True
     experiment_name = "test_daic_16-4"
     # Model params
     model_type = "dense"
@@ -39,6 +39,11 @@ if __name__ == "__main__":
     seed = 1
     dtype = torch.float64
     n_nan_cols = 5
+    # Set path to root directory
+    if cluster:
+        project_folder = "/opt/app"
+    else:
+        project_folder = ".."
 
     # Data processing
     data = pd.read_csv(f"{project_folder}/data/{dataset_name}.csv.gz", nrows=min(n_samples, 9797),
@@ -60,7 +65,8 @@ if __name__ == "__main__":
                         n_go_layers_used,
                         activation_fn,
                         dtype,
-                        genes)
+                        genes,
+                        cluster)
     if load_weights:
         model.load_state_dict(
             torch.load(f"{project_folder}/out/trained_models/{dataset_name}/{load_weights_path}_model.pt",
