@@ -8,7 +8,7 @@ from thesis_binn.train.loss import MSE_Soft_Link_Sum, MSE
 from thesis_binn.train.train import make_data_splits, train_with_validation, save_training_losses
 
 if __name__ == "__main__":
-    cluster = False
+    cluster = True
     experiment_name = "test_daic_16-4"
     # Model params
     model_type = "dense"
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     momentum = 0.9
     patience = 5
     device = "cuda"
-    save_losses = False
+    save_losses = True
     loss_path = experiment_name
     # Model storage params
     save_weights = False
