@@ -1,0 +1,32 @@
+[project]
+authors = [
+    { name = "mlieftinck", email = "martijn.lieftinck@hotmail.nl" }
+]
+name = "thesis_binn"
+version = "0.2.0" # INCREMENT FOR EVERY NEW DEPENDENCY
+requires-python = ">=3.9"
+dependencies = [
+    "packaging"
+]
+
+[tool.pixi.workspace]
+channels = ["nvidia", "conda-forge", "pytorch", "bioconda"]
+platforms = ["win-64", "linux-64"]
+
+[tool.pixi.pypi-dependencies]
+thesis_binn = { path = ".", editable = true }
+
+[system-requirements]
+linux = "3.10"
+cuda = "12.4"
+
+[tool.pixi.dependencies]
+pytorch = {version=">2.4.1", channel="pytorch"}
+pytorch-cuda = "12.4.*"
+pixi-pycharm = ">=0.0.8,<0.0.9"
+pandas = ">=2.2.3,<3"
+goatools = ">=1.4.12,<2"
+matplotlib = ">=3.10.0,<4"
+scikit-learn = ">=1.6.1,<2"
+scanpy = ">=1.10.4,<2"
+plotly = ">=6.0.1,<7"

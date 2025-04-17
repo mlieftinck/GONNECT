@@ -4,7 +4,7 @@ From: ghcr.io/prefix-dev/pixi:0.41.4
 
 # Files
 %files
-    pixi.toml /opt/app/pixi.toml
+    pyproject.toml /opt/app/pyproject.toml
     pixi.lock /opt/app/pixi.lock
 
 # Install dependencies
@@ -14,7 +14,7 @@ From: ghcr.io/prefix-dev/pixi:0.41.4
 
     cd /opt/app
 
-    # Setup pixi dependencies (doesn't work yet...)
+    # Setup pixi dependencies
     pixi install
     
     # Clean up
