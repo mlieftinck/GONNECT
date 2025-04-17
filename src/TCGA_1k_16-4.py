@@ -66,7 +66,7 @@ if __name__ == "__main__":
                         activation_fn,
                         dtype,
                         genes,
-                        cluster)
+                        cluster=cluster)
     if load_weights:
         model.load_state_dict(
             torch.load(f"{project_folder}/out/trained_models/{dataset_name}/{load_weights_path}_model.pt",
