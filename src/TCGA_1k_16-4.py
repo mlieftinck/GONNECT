@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import torch
 
@@ -6,7 +8,7 @@ from thesis_binn.train.loss import MSE_Soft_Link_Sum, MSE
 from thesis_binn.train.train import make_data_splits, train_with_validation, save_training_losses
 
 if __name__ == "__main__":
-    cluster = True
+    cluster = False
     experiment_name = "test_daic_16-4"
     # Model params
     model_type = "dense"
@@ -27,7 +29,7 @@ if __name__ == "__main__":
     momentum = 0.9
     patience = 5
     device = "cuda"
-    save_losses = True
+    save_losses = False
     loss_path = experiment_name
     # Model storage params
     save_weights = False
@@ -79,12 +81,14 @@ if __name__ == "__main__":
     epoch_losses = train_with_validation(n_epochs, trainloader, testloader, validationloader, model, optimizer, loss_fn,
                                          patience, device)
     if save_losses:
-        save_training_losses(epoch_losses,
-                             f"{project_folder}/out/trained_models/{dataset_name}/{loss_path}_results.txt")
+        loss_directory = f"{project_folder}/out/trained_models/{dataset_name}"
+        os.makedirs(loss_directory, exist_ok=True)
+        save_training_losses(epoch_losses, f"{loss_directory}/{loss_path}_results.txt")
 
     if save_weights:
-        torch.save(model.state_dict(),
-                   f"{project_folder}/out/trained_models/{dataset_name}/{save_weights_path}_model.pt")
+        weights_directory = f"{project_folder}/out/saved_weights/{dataset_name}"
+        os.makedirs(weights_directory, exist_ok=True)
+        torch.save(model.state_dict(), f"{weights_directory}/{save_weights_path}_model.pt")
         print(f"\n----- Saved weights to file ({save_weights_path}_model.pt) -----")
 
     # plot_training_loss(f"{project_folder}out/trained_models/{dataset_name}/{loss_path}_results.txt")
