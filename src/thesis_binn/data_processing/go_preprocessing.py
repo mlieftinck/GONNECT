@@ -494,11 +494,16 @@ def merge_by_depth(go: dict[str, GOTerm], layer_population_threshold: int):
 
 def remove_latent_proxies(go: dict[str, GOTerm]):
     """Removes all ProxyTerms in the latent layer, with latent layer being the first layer below the root of the DAG."""
+    print(f"\n----- START: Remove latent proxies -----")
+    pre_go_size = len(go.keys())
     layers = create_layers(go)
     for term in layers[1]:
         if isinstance(term, ProxyTerm):
             # Remove term an all children that form a chain from this term downwards
             remove_proxy_branch(go, term)
+    post_go_size = len(go.keys())
+    print(f"Number of removed proxies: {pre_go_size - post_go_size}")
+    print(f"----- COMPLETED: Removing latent proxies -----")
     return
 
 

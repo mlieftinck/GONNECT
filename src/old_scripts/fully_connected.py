@@ -12,7 +12,7 @@ if __name__ == "__main__":
     biologically_informed = True
     n_samples = 1000
     n_nan_cols = 3
-    data = pd.read_csv("../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples),
+    data = pd.read_csv("../../../GO_TCGA/GE_bp_100.csv.gz", usecols=range(n_nan_cols + n_samples),
                        compression='gzip').sort_values("gene id")
     genes = list(data["gene id"])
     merge_conditions = (1, 10)
