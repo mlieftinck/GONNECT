@@ -2,8 +2,6 @@ from goatools.anno.gaf_reader import GafReader
 from goatools.obo_parser import *
 import time
 
-from win_inet_pton import inject_into_socket
-
 from thesis_binn.data_processing.dag_analysis import *
 from thesis_binn.data_processing.ProxyTerm import ProxyTerm
 
