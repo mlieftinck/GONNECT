@@ -43,6 +43,7 @@ if __name__ == "__main__":
     n_nan_cols = 5
     # Set path to root directory
     project_folder = "/opt/app"
+    cluster = True
 
     # Data processing
     data = pd.read_csv(f"{project_folder}/data/{dataset_name}.csv.gz", nrows=min(n_samples, 9797),
@@ -64,7 +65,8 @@ if __name__ == "__main__":
                         n_go_layers_used,
                         activation_fn,
                         dtype,
-                        genes)
+                        genes,
+                        cluster=cluster)
     if load_weights:
         model.load_state_dict(
             torch.load(f"{project_folder}/out/trained_models/{experiment_name}/{load_weights_path}_model.pt",
