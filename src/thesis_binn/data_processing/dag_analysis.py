@@ -188,9 +188,8 @@ def create_layers(dag: dict[str, GOTerm]):
 def print_layers(layers, show_visualization=True):
     """Prints the lengths of the depth-based DAG layers, for different types of terms.
     Possibility to visualize the structure by printing its shape."""
-    go_terms = []
-    gene_terms = []
-    proxy_terms = []
+    go_terms, gene_terms, proxy_terms = [], [], []
+    n_go, n_gene, n_proxy = 0, 0, 0
     n = 100
     max_layer_len = max(len(layer) for layer in layers)
     symbol_multiplier = n / max_layer_len
@@ -208,8 +207,11 @@ def print_layers(layers, show_visualization=True):
         go_terms.append(go)
         gene_terms.append(gene)
         proxy_terms.append(proxy)
+        n_go += len(go)
+        n_gene += len(gene)
+        n_proxy += len(proxy)
     if show_visualization:
-        print((n + 3) * " " + "Total: terms/genes/proxies")
+        print((n + 3) * " " + f"Total: terms/genes/proxies\t{n_go}/{n_gene}/{n_proxy}")
         for i in range(len(layers)):
             empty_symbols = int((max_layer_len - len(layers[i])) * symbol_multiplier)
             go_symbols = int(len(go_terms[i]) * symbol_multiplier)
@@ -230,7 +232,7 @@ def print_layers(layers, show_visualization=True):
 
         print("\t| = GO terms\n\t* = gene terms\n\t' = proxy terms")
     else:
-        print("   Total: terms/genes/proxies")
+        print(f"   Total: terms/genes/proxies\t{n_go}/{n_gene}/{n_proxy}")
         for i in range(len(go_terms)):
             print(f"{i + 1}. {len(layers)}: {len(go_terms[i])}/{len(gene_terms[i])}/{len(proxy_terms[i])}")
 

@@ -1,6 +1,9 @@
 from goatools.anno.gaf_reader import GafReader
 from goatools.obo_parser import *
 import time
+
+from win_inet_pton import inject_into_socket
+
 from thesis_binn.data_processing.dag_analysis import *
 from thesis_binn.data_processing.ProxyTerm import ProxyTerm
 
@@ -141,11 +144,11 @@ def prune_skip_connections(go: dict[str, GOTerm]):
     for term_id in sorted(go.keys()):
         direct_parent_ids = {parent.item_id for parent in go[term_id].parents}
         indirect_parent_ids = set()
-        for parent_id in direct_parent_ids:
+        for parent_id in sorted(direct_parent_ids):
             indirect_parent_ids.update(go[parent_id].get_all_parents())
 
         # Check for skip condition
-        for parent_id in direct_parent_ids:
+        for parent_id in sorted(direct_parent_ids):
             if parent_id in indirect_parent_ids:
                 go[term_id].parents.remove(go[parent_id])
                 go[parent_id].children.remove(go[term_id])
@@ -242,7 +245,7 @@ def insert_proxy_terms(go: dict[str, GOTerm], root, original_dag_size):
 
     # Check for imbalanced children
     imbalanced_children = set()
-    for child in root.children:
+    for child in sorted(root.children, key=lambda x: x.item_id):
         if is_imbalanced(child):
             # Check if parent is on the shorter branch of the imbalance
             if child.level == root.level + 1:
@@ -270,13 +273,13 @@ def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0000000"):
     """Iteratively apply balancing to the given DAG, until all nodes are balanced."""
     print("\n----- START: Balancing DAG with proxies -----")
     original_size = len(go)
-    imbalanced = sum(is_imbalanced(term) for term in go.values())
+    n_imbalanced = sum(is_imbalanced(term) for term in go.values())
     dag_size = original_size
     stall = False
     stall_counter = 5
-    while imbalanced > 0:
+    while n_imbalanced > 0:
         insert_proxy_terms(go, go[root_id], original_size)
-        imbalanced = sum(is_imbalanced(term) for term in go.values())
+        n_imbalanced = sum(is_imbalanced(term) for term in go.values())
 
         if not stall:
             # print(f"Proxy terms added: {len(go) - dag_size}")
@@ -284,7 +287,7 @@ def balance_until_convergence(go: dict[str, GOTerm], root_id="GO:0000000"):
             pass
 
         # Check if the loop stalls, and terminate if needed
-        if (len(go) - dag_size == 0) and (imbalanced > 0):
+        if (len(go) - dag_size == 0) and (n_imbalanced > 0):
             if stall_counter == 0:
                 break
 
@@ -302,7 +305,7 @@ def pull_leaves_down(go: dict[str, GOTerm], original_dag_size):
     pre_proxy_size = len(go)
     leaf_ids = all_leaf_ids(go)
     max_depth = max(go[leaf_id].depth for leaf_id in leaf_ids)
-    for leaf_id in leaf_ids:
+    for leaf_id in sorted(leaf_ids):
         while go[leaf_id].depth < max_depth:
             proxy_item_id = "Proxy:" + str(len(go) - original_dag_size + 1) + "_" + leaf_id
             go[proxy_item_id] = ProxyTerm(proxy_item_id, {p for p in go[leaf_id].parents}, {go[leaf_id]})
@@ -489,6 +492,33 @@ def merge_by_depth(go: dict[str, GOTerm], layer_population_threshold: int):
     return merge_events
 
 
+def remove_latent_proxies(go: dict[str, GOTerm]):
+    """Removes all ProxyTerms in the latent layer, with latent layer being the first layer below the root of the DAG."""
+    layers = create_layers(go)
+    for term in layers[1]:
+        if isinstance(term, ProxyTerm):
+            # Remove term an all children that form a chain from this term downwards
+            remove_proxy_branch(go, term)
+    return
+
+
+def remove_proxy_branch(go: dict[str, GOTerm], term: GOTerm):
+    """Remove current ProxyTerm and recursively the whole chain of proxies it belongs to."""
+    # Remove current term
+    for parent in term.parents:
+        parent.children.remove(term)
+    for child in term.children:
+        child.parents.remove(term)
+    go.pop(term.item_id)
+    # Check if removed term was part of a chain of ProxyTerms
+    if len(term.children) == 1:
+        child = term.children.pop()
+        # Recursive call to remove child only if child is a ProxyTerm and has been made an orphan
+        if isinstance(child, ProxyTerm):
+            if len(child.parents) == 0:
+                remove_proxy_branch(go, child)
+
+
 def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False, package_call=False, cluster=False):
     default_layer_population_threshold = 0
     # Initialize GO DAG
@@ -526,6 +556,10 @@ def construct_go_bp_layers(genes, merge_conditions=(1, 10), print_go=False, pack
     go_proxyless = copy_dag(go)
     balance_until_convergence(go)
     pull_leaves_down(go, len(go_proxyless))
+    if print_go:
+        print_layers(create_layers(go))
+    # Remove latent proxies
+    remove_latent_proxies(go)
     if print_go:
         print_layers(create_layers(go))
     # Layerize DAG

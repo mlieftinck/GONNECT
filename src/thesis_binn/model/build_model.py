@@ -72,5 +72,5 @@ def build_model(model_type: str, biologically_informed: str, soft_links: bool, d
     print(f"Uses soft links: {soft_links}")
     print(f"Real-time GO-processing: {go_preprocessing}")
     print(f"Merge conditions: {merge_conditions} (min parents, min children, min terms per layer)")
-    print(f"Number of GO layers used: {n_go_layers_used}\n")
+    print(f"Number of GO layers used: {len(used_go_layers)}\n")
     return Autoencoder(encoder, decoder)
